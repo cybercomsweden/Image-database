@@ -3,6 +3,7 @@ use futures::FutureExt;
 use tokio_postgres::{Client, NoTls};
 
 mod error;
+mod thumbnail;
 
 use crate::error::Result;
 
