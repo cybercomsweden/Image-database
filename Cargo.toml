@@ -1,0 +1,12 @@
+[package]
+name = "backlog"
+version = "0.1.0"
+authors = ["Andreas Runfalk <andreas@runfalk.se>"]
+edition = "2018"
+
+[dependencies]
+actix-rt = "1"
+actix-web = "2"
+anyhow = "1"
+futures = "0.3"
+tokio-postgres = "0.5"
