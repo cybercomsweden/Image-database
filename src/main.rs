@@ -1,5 +1,7 @@
 use actix_web::{web, App, HttpServer, Responder};
 use futures::FutureExt;
+use std::path::PathBuf;
+use structopt::StructOpt;
 use tokio_postgres::{Client, NoTls};
 
 mod error;
@@ -41,8 +43,7 @@ async fn greet(db: web::Data<DbConn>) -> Result<impl Responder> {
     Ok(format!("SELECT 1 + 1 -> {}", rows[0].get::<_, i32>(0)))
 }
 
-#[actix_rt::main]
-async fn main() -> Result<()> {
+async fn run_server() -> Result<()> {
     Ok(HttpServer::new(|| {
         App::new()
             .data_factory(get_db)
@@ -51,4 +52,36 @@ async fn main() -> Result<()> {
     .bind("127.0.0.1:5000")?
     .run()
     .await?)
+}
+
+#[derive(Debug, StructOpt)]
+enum Cmd {
+    /// Takes the folder provided and copies it to it pre configured folder with corresponding
+    /// thumbnails
+    Import {
+        #[structopt(parse(from_os_str))]
+        path: PathBuf,
+    },
+    /// Default, starts the application
+    Run,
+}
+
+#[derive(Debug, StructOpt)]
+struct Opt {
+    #[structopt(subcommand)]
+    cmd: Option<Cmd>,
+}
+
+fn main() -> Result<()> {
+    let opt = Opt::from_args();
+    println!("{:?}", opt);
+
+    match opt.cmd.unwrap_or(Cmd::Run) {
+        import @ Cmd::Import { .. } => println!("Importing important stuff! {:?}", import),
+        Cmd::Run => {
+            println!("Running program");
+            actix_rt::System::new("main").block_on(async move { run_server().await })?;
+        }
+    }
+    Ok(())
 }

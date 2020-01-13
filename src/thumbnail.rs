@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 /// fn _example_usage()-> Result<()> {
 ///     // Use the open function to load an image from a Path.
 ///     // ```open``` returns a `DynamicImage` on success.
@@ -12,10 +13,7 @@
 ///     thumbnail.save(&dest_path)?;
 ///     Ok(())
 /// }
-
-
 use image::GenericImageView;
-use anyhow::{anyhow, Result};
 
 fn divide(x: u32, y: u32) -> u32 {
     let z = x as f32 / y as f32;
@@ -44,7 +42,11 @@ fn add_suffix<T: AsRef<str>, U: AsRef<str>>(
     Ok(dest_path)
 }
 
-pub fn create_thumbnail(img: &image::DynamicImage, x_size: u32, y_size: u32) -> image::DynamicImage {
+pub fn create_thumbnail(
+    img: &image::DynamicImage,
+    x_size: u32,
+    y_size: u32,
+) -> image::DynamicImage {
     let (x, y) = img.dimensions();
 
     let (new_x, new_y, y_corner, x_corner) = if ratio(x, y, 3, 2) > 0 {
@@ -60,4 +62,3 @@ pub fn create_thumbnail(img: &image::DynamicImage, x_size: u32, y_size: u32) -> 
     let mut resized = img.resize(new_x, new_y, image::FilterType::Gaussian);
     resized.crop(x_corner, y_corner, x_size, y_size)
 }
-
