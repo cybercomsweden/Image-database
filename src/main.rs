@@ -5,9 +5,11 @@ use structopt::StructOpt;
 use tokio_postgres::{Client, NoTls};
 
 mod error;
+mod model;
 mod thumbnail;
 
 use crate::error::Result;
+use crate::model::{create_schema, Entity};
 
 type DbConn = Client;
 
@@ -39,8 +41,8 @@ async fn get_db() -> Result<DbConn> {
 }
 
 async fn greet(db: web::Data<DbConn>) -> Result<impl Responder> {
-    let rows = db.query("SELECT 1 + 1", &[]).await?;
-    Ok(format!("SELECT 1 + 1 -> {}", rows[0].get::<_, i32>(0)))
+    let rows = db.query("SELECT * FROM entity", &[]).await?;
+    Ok(format!("SELECT 1 + 1 -> {:?}", Entity::from_row(&rows[0])))
 }
 
 async fn run_server() -> Result<()> {
@@ -56,14 +58,18 @@ async fn run_server() -> Result<()> {
 
 #[derive(Debug, StructOpt)]
 enum Cmd {
+    /// Default, starts the application
+    Run,
+
     /// Takes the folder provided and copies it to it pre configured folder with corresponding
     /// thumbnails
     Import {
         #[structopt(parse(from_os_str))]
         path: PathBuf,
     },
-    /// Default, starts the application
-    Run,
+
+    /// Initialize database
+    InitDb,
 }
 
 #[derive(Debug, StructOpt)]
@@ -77,10 +83,14 @@ fn main() -> Result<()> {
     println!("{:?}", opt);
 
     match opt.cmd.unwrap_or(Cmd::Run) {
-        import @ Cmd::Import { .. } => println!("Importing important stuff! {:?}", import),
         Cmd::Run => {
             println!("Running program");
             actix_rt::System::new("main").block_on(async move { run_server().await })?;
+        }
+        import @ Cmd::Import { .. } => println!("Importing important stuff! {:?}", import),
+        Cmd::InitDb => {
+            actix_rt::System::new("main")
+                .block_on(async move { create_schema(&get_db().await?).await })?;
         }
     }
     Ok(())
