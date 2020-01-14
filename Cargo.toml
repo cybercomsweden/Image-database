@@ -13,6 +13,7 @@ futures = "0.3"
 image = "0.22"
 structopt = "0.3"
 tokio-postgres = "0.5"
+walkdir = "2"
 
 [dependencies.postgres-types]
 version = "0.1"

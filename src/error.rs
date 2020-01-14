@@ -23,6 +23,7 @@ impl From<Error> for Box<dyn std::error::Error + 'static + Send + Sync> {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // TODO: Use proper error
+        dbg!(self);
         write!(f, "Error!")
     }
 }

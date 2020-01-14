@@ -11,6 +11,7 @@ mod thumbnail;
 
 use crate::error::Result;
 use crate::model::{create_schema, Entity};
+use crate::thumbnail::copy_and_create_thumbnail;
 
 type DbConn = Client;
 
@@ -43,6 +44,9 @@ async fn get_db() -> Result<DbConn> {
 
 async fn greet(db: web::Data<DbConn>) -> Result<impl Responder> {
     let rows = db.query("SELECT * FROM entity", &[]).await?;
+    if rows.len() == 0 {
+        return Ok("No data in database".into());
+    }
     let entity = Entity::from_row(&rows[0])?;
     Ok(format!(
         "SELECT 1 + 1 -> {:?} {}",
@@ -86,14 +90,14 @@ struct Opt {
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
-    println!("{:?}", opt);
 
     match opt.cmd.unwrap_or(Cmd::Run) {
         Cmd::Run => {
-            println!("Running program");
             actix_rt::System::new("main").block_on(async move { run_server().await })?;
         }
-        import @ Cmd::Import { .. } => println!("Importing important stuff! {:?}", import),
+        Cmd::Import { path } => {
+            copy_and_create_thumbnail(&path)?;
+        }
         Cmd::InitDb => {
             actix_rt::System::new("main")
                 .block_on(async move { create_schema(&get_db().await?).await })?;

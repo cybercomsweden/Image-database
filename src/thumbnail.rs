@@ -14,6 +14,9 @@ use anyhow::{anyhow, Result};
 ///     Ok(())
 /// }
 use image::GenericImageView;
+use std::fs;
+use std::path::PathBuf;
+use walkdir::WalkDir;
 
 fn divide(x: u32, y: u32) -> u32 {
     let z = x as f32 / y as f32;
@@ -42,11 +45,7 @@ fn add_suffix<T: AsRef<str>, U: AsRef<str>>(
     Ok(dest_path)
 }
 
-pub fn create_thumbnail(
-    img: &image::DynamicImage,
-    x_size: u32,
-    y_size: u32,
-) -> image::DynamicImage {
+fn create_thumbnail(img: &image::DynamicImage, x_size: u32, y_size: u32) -> image::DynamicImage {
     let (x, y) = img.dimensions();
 
     let (new_x, new_y, y_corner, x_corner) = if ratio(x, y, 3, 2) > 0 {
@@ -61,4 +60,36 @@ pub fn create_thumbnail(
 
     let mut resized = img.resize(new_x, new_y, image::FilterType::Gaussian);
     resized.crop(x_corner, y_corner, x_size, y_size)
+}
+
+pub fn copy_and_create_thumbnail(src_dir: &PathBuf) -> Result<()> {
+    let valid_extensions = vec!["jpg", "jpeg", "png"];
+
+    for path in WalkDir::new(src_dir).follow_links(true) {
+        let path = path?.into_path();
+        let extension = path
+            .extension()
+            .map(std::ffi::OsStr::to_str)
+            .flatten()
+            .unwrap_or("");
+        if !valid_extensions.contains(&extension) {
+            continue;
+        }
+
+        // Current original image
+        let img = image::open(&path)?;
+        let file_name = path.file_stem().unwrap();
+
+        // Create and save the corresponding thumbnail
+        let dest_path = std::path::Path::new("dest");
+        fs::create_dir_all("dest")?;
+        let thumbnail = create_thumbnail(&img, 300, 200);
+        let thumbnail_path = add_suffix(&dest_path.join(file_name), "_resized", ".jpg")?;
+        thumbnail.save(&thumbnail_path)?;
+
+        // Copy the original image to the destination folder
+        let img_path = dest_path.join(path.file_name().unwrap());
+        img.save(&img_path)?;
+    }
+    Ok(())
 }
