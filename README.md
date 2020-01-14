@@ -4,7 +4,7 @@ Personal digital photography organisation program.
 ## Installation
 ### Fedora 31:
 ```
-sudo dnf install postgresql-server
+sudo dnf install postgresql-server postgis
 sudo -u postgres /usr/bin/postgresql-setup --initdb
 sudo systemctl start postgresql
 sudo -u postgres createuser -drs $USER
