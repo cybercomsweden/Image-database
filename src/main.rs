@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use tokio_postgres::{Client, NoTls};
 
+mod coord;
 mod error;
 mod model;
 mod thumbnail;
@@ -42,7 +43,12 @@ async fn get_db() -> Result<DbConn> {
 
 async fn greet(db: web::Data<DbConn>) -> Result<impl Responder> {
     let rows = db.query("SELECT * FROM entity", &[]).await?;
-    Ok(format!("SELECT 1 + 1 -> {:?}", Entity::from_row(&rows[0])))
+    let entity = Entity::from_row(&rows[0])?;
+    Ok(format!(
+        "SELECT 1 + 1 -> {:?} {}",
+        &entity,
+        entity.location.as_ref().unwrap()
+    ))
 }
 
 async fn run_server() -> Result<()> {

@@ -3,16 +3,20 @@ use actix_web::ResponseError;
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug)]
-pub enum Error {
-    Anyhow(anyhow::Error),
-}
+pub struct Error(anyhow::Error);
 
 impl<E> From<E> for Error
 where
-    E: std::error::Error + Send + Sync + 'static,
+    E: Into<anyhow::Error>,
 {
     fn from(error: E) -> Self {
-        Self::Anyhow(anyhow::Error::from(error))
+        Self(error.into())
+    }
+}
+
+impl From<Error> for Box<dyn std::error::Error + 'static + Send + Sync> {
+    fn from(error: Error) -> Self {
+        error.0.into()
     }
 }
 

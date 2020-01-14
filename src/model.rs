@@ -5,6 +5,7 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 use tokio_postgres::{Client, Row};
 
+use crate::coord::Location;
 use crate::error::Result;
 
 #[derive(Debug, ToSql, FromSql)]
@@ -18,35 +19,23 @@ pub enum EntityType {
 }
 
 #[derive(Debug)]
-pub struct Location {
-    longitude: f64,
-    latitude: f64,
-}
-
-#[derive(Debug)]
 pub struct Entity {
-    id: usize,
-    media_type: EntityType,
-    path: PathBuf,
-    thumbnail_path: PathBuf,
-    preview_path: PathBuf,
-    uploaded: DateTime<Utc>,
-    created: Option<DateTime<Utc>>,
-    location: Option<Location>,
+    pub id: usize,
+    pub media_type: EntityType,
+    pub path: PathBuf,
+    pub thumbnail_path: PathBuf,
+    pub preview_path: PathBuf,
+    pub uploaded: DateTime<Utc>,
+    pub created: Option<DateTime<Utc>>,
+    pub location: Option<Location>,
 }
 
 impl<'a> FromSql<'a> for Location {
     fn from_sql(
-        ty: &Type,
+        _ty: &Type,
         raw: &'a [u8],
     ) -> std::result::Result<Self, Box<dyn Error + 'static + Send + Sync>> {
-        // TODO: Parse this WKB with SRID
-        dbg!(ty);
-        dbg!(raw);
-        Ok(Location {
-            longitude: 0.0,
-            latitude: 0.0,
-        })
+        Ok(Location::from_postgis_ewkb(&raw)?)
     }
 
     fn accepts(ty: &Type) -> bool {
