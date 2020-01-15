@@ -1,4 +1,5 @@
-use actix_web::{web, App, HttpServer, Responder};
+use actix_files::NamedFile;
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
 use futures::FutureExt;
 use std::path::PathBuf;
@@ -44,24 +45,35 @@ async fn get_db() -> Result<DbConn> {
     Ok(client)
 }
 
-async fn greet(db: web::Data<DbConn>) -> Result<impl Responder> {
+async fn show_media(req: HttpRequest) -> Result<NamedFile> {
+    let path: PathBuf = req.match_info().query("media").parse()?;
+    let path = std::path::Path::new("dest").join(path.file_name().ok_or(anyhow!("No such image"))?);
+    Ok(NamedFile::open(path)?)
+}
+
+async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
     let rows = db.query("SELECT * FROM entity", &[]).await?;
     if rows.len() == 0 {
         return Ok("No data in database".into());
     }
-    let entity = Entity::from_row(&rows[0])?;
-    Ok(format!(
-        "SELECT 1 + 1 -> {:?} {}",
-        &entity,
-        entity.location.as_ref().unwrap()
-    ))
+
+    let mut vect = Vec::new();
+    for row in rows {
+        let entity = Entity::from_row(&row)?;
+        vect.push(format!("<img src={:?}>", &entity.thumbnail_path));
+    }
+
+    Ok(HttpResponse::Ok()
+        .content_type("text/html")
+        .body(vect.join("\n")))
 }
 
 async fn run_server() -> Result<()> {
     Ok(HttpServer::new(|| {
         App::new()
             .data_factory(get_db)
-            .route("/", web::get().to(greet))
+            .route("/", web::get().to(list_from_database))
+            .route("/{media:.*}", web::get().to(show_media))
     })
     .bind("127.0.0.1:5000")?
     .run()
@@ -85,10 +97,20 @@ async fn populate_database(client: &Client, src_dir: &PathBuf) -> Result<()> {
 
         let (img, thumbnail) = copy_and_create_thumbnail(&path)?;
 
-        client.execute("
+        client
+            .execute(
+                "
             INSERT INTO entity(media_type, path, thumbnail_path, preview_path)
             VALUES('image', $1, $2, '')
-        ", &[&img.to_str().ok_or(anyhow!("Invalid img path"))?, &thumbnail.to_str().ok_or(anyhow!("Invalid thumbnail path"))?]).await?;
+        ",
+                &[
+                    &img.to_str().ok_or(anyhow!("Invalid img path"))?,
+                    &thumbnail
+                        .to_str()
+                        .ok_or(anyhow!("Invalid thumbnail path"))?,
+                ],
+            )
+            .await?;
     }
     Ok(())
 }

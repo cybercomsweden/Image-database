@@ -5,6 +5,7 @@ authors = ["Andreas Runfalk <andreas@runfalk.se>"]
 edition = "2018"
 
 [dependencies]
+actix-files = "0.2"
 actix-rt = "1"
 actix-web = "2"
 anyhow = "1"
