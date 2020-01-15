@@ -1,2 +1,4 @@
+/Cargo.lock
+/dest
 /target
 **/*.rs.bk
