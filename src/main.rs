@@ -4,39 +4,37 @@ use anyhow::anyhow;
 use futures::FutureExt;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tokio_postgres::{Client, NoTls};
+use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
 use walkdir::WalkDir;
 
+mod config;
 mod coord;
 mod error;
 mod model;
 mod thumbnail;
 
+use crate::config::Config;
 use crate::error::Result;
 use crate::model::{create_schema, Entity};
 use crate::thumbnail::copy_and_create_thumbnail;
 
 type DbConn = Client;
 
-fn get_db_user() -> Result<String> {
-    // TODO: Replace this with something libc-based?
-    let output = std::process::Command::new("whoami").output()?;
-    Ok(std::str::from_utf8(&output.stdout)?.into())
-}
-
 /// Helper method to access database the database in a request handler. Use by
 /// adding `db: web::Data<DbConn>` to your request handler's argument list.
-async fn get_db() -> Result<DbConn> {
+async fn get_db(config: Config) -> Result<DbConn> {
+    // TODO: This panics if it's unable to connect to database. How to handle?
+
     // Create a client that we use to query the database and a connection that
     // we use to wake up the futures when we query the database
-    let (client, conn) = tokio_postgres::connect(
-        &format!(
-            "host=/var/run/postgresql/ user={} dbname=backlog",
-            &get_db_user()?
-        ),
-        NoTls,
-    )
-    .await?;
+    let res = PostgresConfig::new()
+        .host(&config.database.host)
+        .port(config.database.port)
+        .user(&config.database.user)
+        .dbname(&config.database.dbname)
+        .connect(NoTls)
+        .await;
+    let (client, conn) = res?;
 
     // We must provide the event loop with our connection, or our query futures
     // will never resolve
@@ -68,10 +66,15 @@ async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
         .body(vect.join("\n")))
 }
 
-async fn run_server() -> Result<()> {
-    Ok(HttpServer::new(|| {
+async fn run_server(config: Config) -> Result<()> {
+    Ok(HttpServer::new(move || {
+        // We need this here to ensure ownership for the data_factory callback to move this into
+        // itself
+        let get_db_config = config.clone();
+
         App::new()
-            .data_factory(get_db)
+            .app_data(config.clone())
+            .data_factory(move || get_db(get_db_config.clone()))
             .route("/", web::get().to(list_from_database))
             .route("/{media:.*}", web::get().to(show_media))
     })
@@ -140,17 +143,23 @@ struct Opt {
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
+    let config = if let Ok(config_str) = std::fs::read_to_string("config.toml") {
+        toml::from_str(&config_str)?
+    } else {
+        Config::default()
+    };
+
     match opt.cmd.unwrap_or(Cmd::Run) {
         Cmd::Run => {
-            actix_rt::System::new("main").block_on(async move { run_server().await })?;
+            actix_rt::System::new("main").block_on(async move { run_server(config).await })?;
         }
         Cmd::Import { path } => {
             actix_rt::System::new("main")
-                .block_on(async move { populate_database(&get_db().await?, &path).await })?;
+                .block_on(async move { populate_database(&get_db(config).await?, &path).await })?;
         }
         Cmd::InitDb => {
             actix_rt::System::new("main")
-                .block_on(async move { create_schema(&get_db().await?).await })?;
+                .block_on(async move { create_schema(&get_db(config).await?).await })?;
         }
     }
     Ok(())
