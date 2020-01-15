@@ -1,8 +1,10 @@
 use actix_web::{web, App, HttpServer, Responder};
+use anyhow::anyhow;
 use futures::FutureExt;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tokio_postgres::{Client, NoTls};
+use walkdir::WalkDir;
 
 mod coord;
 mod error;
@@ -66,6 +68,31 @@ async fn run_server() -> Result<()> {
     .await?)
 }
 
+async fn populate_database(client: &Client, src_dir: &PathBuf) -> Result<()> {
+    let valid_extensions = vec!["jpg", "jpeg", "png"];
+
+    for path in WalkDir::new(src_dir).follow_links(true) {
+        let path = path?.into_path();
+
+        let extension = path
+            .extension()
+            .map(std::ffi::OsStr::to_str)
+            .flatten()
+            .unwrap_or("");
+        if !valid_extensions.contains(&extension) {
+            continue;
+        }
+
+        let (img, thumbnail) = copy_and_create_thumbnail(&path)?;
+
+        client.execute("
+            INSERT INTO entity(media_type, path, thumbnail_path, preview_path)
+            VALUES('image', $1, $2, '')
+        ", &[&img.to_str().ok_or(anyhow!("Invalid img path"))?, &thumbnail.to_str().ok_or(anyhow!("Invalid thumbnail path"))?]).await?;
+    }
+    Ok(())
+}
+
 #[derive(Debug, StructOpt)]
 enum Cmd {
     /// Default, starts the application
@@ -96,7 +123,8 @@ fn main() -> Result<()> {
             actix_rt::System::new("main").block_on(async move { run_server().await })?;
         }
         Cmd::Import { path } => {
-            copy_and_create_thumbnail(&path)?;
+            actix_rt::System::new("main")
+                .block_on(async move { populate_database(&get_db().await?, &path).await })?;
         }
         Cmd::InitDb => {
             actix_rt::System::new("main")
