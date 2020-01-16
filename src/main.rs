@@ -140,7 +140,8 @@ struct Opt {
     cmd: Option<Cmd>,
 }
 
-fn main() -> Result<()> {
+#[actix_rt::main]
+async fn main() -> Result<()> {
     let opt = Opt::from_args();
 
     let config = if let Ok(config_str) = std::fs::read_to_string("config.toml") {
@@ -151,15 +152,13 @@ fn main() -> Result<()> {
 
     match opt.cmd.unwrap_or(Cmd::Run) {
         Cmd::Run => {
-            actix_rt::System::new("main").block_on(async move { run_server(config).await })?;
+            run_server(config).await?;
         }
         Cmd::Import { path } => {
-            actix_rt::System::new("main")
-                .block_on(async move { populate_database(&get_db(config).await?, &path).await })?;
+            populate_database(&get_db(config).await?, &path).await?;
         }
         Cmd::InitDb => {
-            actix_rt::System::new("main")
-                .block_on(async move { create_schema(&get_db(config).await?).await })?;
+            create_schema(&get_db(config).await?).await?;
         }
     }
     Ok(())
