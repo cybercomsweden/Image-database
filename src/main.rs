@@ -49,6 +49,10 @@ async fn show_media(req: HttpRequest) -> Result<NamedFile> {
     Ok(NamedFile::open(path)?)
 }
 
+async fn static_css() -> Result<NamedFile> {
+    Ok(NamedFile::open("src/stylesheet.css")?)
+}
+
 async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
     let rows = db.query("SELECT * FROM entity", &[]).await?;
     if rows.len() == 0 {
@@ -58,12 +62,41 @@ async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
     let mut vect = Vec::new();
     for row in rows {
         let entity = Entity::from_row(&row)?;
-        vect.push(format!("<img src={:?}>", &entity.thumbnail_path));
+        vect.push(format!(
+            r#"<div class="media-thumbnail"><img src="/media/{}"></div>"#,
+            &entity
+                .thumbnail_path
+                .to_str()
+                .ok_or(anyhow!("Invalid character in path"))?
+        ));
     }
 
-    Ok(HttpResponse::Ok()
-        .content_type("text/html")
-        .body(vect.join("\n")))
+    let content = format!(
+        r#"<!DOCTYPE html>
+        <html>
+        <head>
+            <title>Backlog</title>
+            <link rel="stylesheet" href="/static/stylesheet.css">
+        </head>
+        <body>
+            <div class="content">
+                <header>
+                    <nav>
+                        <a class="active" href="/">Media</a>
+                        <a href="/">Tags</a>
+                    </nav>
+                    <div class="search-bar">
+                        <input type="text" name="search">
+                    </div>
+                </header>
+                <div class="media-thumbnail-list">{}</div>
+            </div>
+         </body>
+         </html>
+        "#,
+        vect.join("\n")
+    );
+    Ok(HttpResponse::Ok().content_type("text/html").body(content))
 }
 
 async fn run_server(config: Config) -> Result<()> {
@@ -76,7 +109,8 @@ async fn run_server(config: Config) -> Result<()> {
             .app_data(config.clone())
             .data_factory(move || get_db(get_db_config.clone()))
             .route("/", web::get().to(list_from_database))
-            .route("/{media:.*}", web::get().to(show_media))
+            .route("/media/{media:.*}", web::get().to(show_media))
+            .route("/static/stylesheet.css", web::get().to(static_css))
     })
     .bind("127.0.0.1:5000")?
     .run()
@@ -84,7 +118,7 @@ async fn run_server(config: Config) -> Result<()> {
 }
 
 async fn populate_database(client: &Client, src_dir: &PathBuf) -> Result<()> {
-    let valid_extensions = vec!["jpg", "jpeg", "png"];
+    let valid_extensions = vec!["jpg", "jpeg", "png", "JPG"];
 
     for path in WalkDir::new(src_dir).follow_links(true) {
         let path = path?.into_path();
@@ -97,7 +131,7 @@ async fn populate_database(client: &Client, src_dir: &PathBuf) -> Result<()> {
         if !valid_extensions.contains(&extension) {
             continue;
         }
-
+        dbg!(&path);
         let (img, thumbnail) = copy_and_create_thumbnail(&path)?;
 
         client
