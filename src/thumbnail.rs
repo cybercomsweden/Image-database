@@ -17,6 +17,13 @@ use image::GenericImageView;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+enum Rotate {
+    Keep,
+    Cw90,
+    Ccw90,
+    Cw180,
+}
+
 fn divide(x: u32, y: u32) -> u32 {
     let z = x as f32 / y as f32;
     z.ceil() as u32
@@ -61,7 +68,23 @@ fn create_thumbnail(img: &image::DynamicImage, x_size: u32, y_size: u32) -> imag
     resized.crop(x_corner, y_corner, x_size, y_size)
 }
 
+fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Rotate {
+    let file = std::fs::File::open(path).unwrap();
+    let reader = exif::Reader::new(&mut std::io::BufReader::new(&file)).unwrap();
+
+    let exif_orientation = reader.get_field(exif::Tag::Orientation, exif::In::PRIMARY);
+    if exif_orientation.is_none() {
+        return Rotate::Keep;
+    }
+
+    match exif_orientation.unwrap().value.get_uint(0).unwrap() {
+        6 => Rotate::Cw90,
+        1 | _ => Rotate::Keep,
+    }
+}
+
 pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, PathBuf)> {
+    let rotation = find_orientation(&path);
     // Current original image
     let img = image::open(path.as_ref())?;
     let file_name = path.as_ref().file_stem().unwrap();
@@ -69,6 +92,12 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     // Create and save the corresponding thumbnail
     let dest_path = std::path::Path::new("dest");
     fs::create_dir_all("dest")?;
+    let img = match rotation {
+        Rotate::Keep => img,
+        Rotate::Cw90 => img.rotate90(),
+        Rotate::Cw180 => img.rotate180(),
+        Rotate::Ccw90 => img.rotate270(),
+    };
     let thumbnail = create_thumbnail(&img, 300, 200);
     let thumbnail_path = add_suffix(&dest_path.join(file_name), "_resized", ".jpg")?;
     thumbnail.save(&thumbnail_path)?;
