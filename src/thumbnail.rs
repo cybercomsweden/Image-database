@@ -240,10 +240,28 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     let copied_orig = dest_path.join(path.as_ref().file_name().unwrap());
     fs::copy(&path, &copied_orig)?;
 
-    // Create and save the corresponding thumbnail
-    let thumbnail = create_thumbnail(&img, 300, 200);
-    let thumbnail_path = add_suffix(&dest_path.join(file_name), "_thumbnail", ".jpg")?;
+    let seam_carv = seam_carving(img);
+    let thumbnail = seam_carv.resize(300, 200, image::FilterType::Gaussian);
+    let thumbnail_path = add_suffix(&dest_path.join(file_name), "_resized", ".jpg")?;
     thumbnail.save(&thumbnail_path)?;
 
     Ok((copied_orig, thumbnail_path))
+}
+
+pub fn seam_carving(img: image::DynamicImage) -> image::DynamicImage {
+    let (width, height) = img.dimensions();
+    let aspect_ratio = width as f32 / height as f32;
+    println!("aspect ratio: {}", aspect_ratio);
+    if aspect_ratio as f32 == 1.5 {
+        // already 3:2 format
+        return img;
+    } else if aspect_ratio as f32 > 1.5 {
+        let new_width = (height as f32 * 1.5).ceil() as u32;
+        println!("dimensions {} {}", new_width, height);
+        return DynamicImage::ImageRgba8(seamcarving::resize(&img, new_width, height));
+    } else {
+        let new_height = (width as f32 / 1.5).ceil() as u32;
+        println!("dimensions {} {}", width, new_height);
+        return DynamicImage::ImageRgba8(seamcarving::resize(&img, width, new_height));
+    }
 }
