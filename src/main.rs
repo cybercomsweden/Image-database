@@ -16,7 +16,7 @@ mod thumbnail;
 use crate::config::Config;
 use crate::error::Result;
 use crate::model::{create_schema, Entity};
-use crate::thumbnail::copy_and_create_thumbnail;
+use crate::thumbnail::{copy_and_create_thumbnail, media_type_from_path};
 
 type DbConn = Client;
 
@@ -118,21 +118,21 @@ async fn run_server(config: Config) -> Result<()> {
 }
 
 async fn populate_database(client: &Client, src_dir: &PathBuf) -> Result<()> {
-    let valid_extensions = vec!["jpg", "jpeg", "png", "JPG"];
-
     for path in WalkDir::new(src_dir).follow_links(true) {
         let path = path?.into_path();
-
-        let extension = path
-            .extension()
-            .map(std::ffi::OsStr::to_str)
-            .flatten()
-            .unwrap_or("");
-        if !valid_extensions.contains(&extension) {
+        if media_type_from_path(&path).is_none() {
+            println!("Ignoring {:?}", path);
             continue;
         }
-        dbg!(&path);
-        let (img, thumbnail) = copy_and_create_thumbnail(&path)?;
+
+        println!("Making thumbnail for {:?}", &path);
+        let (img, thumbnail) = match copy_and_create_thumbnail(&path) {
+            Ok((i, t)) => (i, t),
+            Err(err) => {
+                println!("Failed: {}", err);
+                continue;
+            }
+        };
 
         client
             .execute(

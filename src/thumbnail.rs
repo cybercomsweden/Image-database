@@ -1,22 +1,17 @@
 use anyhow::{anyhow, Result};
-/// fn _example_usage()-> Result<()> {
-///     // Use the open function to load an image from a Path.
-///     // ```open``` returns a `DynamicImage` on success.
-///     let img_path = std::path::Path::new("/home/johanna/Bilder/person.jpeg");
-///     let img = image::open(img_path)?;
-///
-///     let thumbnail = create_thumbnail(&img, 300, 200);
-///
-///     let dest_path = add_suffix(img_path, "_resized", ".jpg")?;
-///
-///     // Write the resized and cropped image to a .jpg file
-///     thumbnail.save(&dest_path)?;
-///     Ok(())
-/// }
-use image::GenericImageView;
+use image::{DynamicImage, GenericImageView, ImageBuffer};
+use std::convert::TryInto;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MediaType {
+    Image,
+    RawImage,
+    Video,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum Rotate {
     Keep,
     Cw90,
@@ -68,25 +63,53 @@ fn create_thumbnail(img: &image::DynamicImage, x_size: u32, y_size: u32) -> imag
     resized.crop(x_corner, y_corner, x_size, y_size)
 }
 
-fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Rotate {
+fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
     let file = std::fs::File::open(path).unwrap();
     let reader = exif::Reader::new(&mut std::io::BufReader::new(&file)).unwrap();
 
-    let exif_orientation = reader.get_field(exif::Tag::Orientation, exif::In::PRIMARY);
-    if exif_orientation.is_none() {
-        return Rotate::Keep;
-    }
+    let exif_orientation = reader.get_field(exif::Tag::Orientation, exif::In::PRIMARY)?;
 
-    match exif_orientation.unwrap().value.get_uint(0).unwrap() {
-        6 => Rotate::Cw90,
-        1 | _ => Rotate::Keep,
+    match exif_orientation.value.get_uint(0)? {
+        6 => Some(Rotate::Cw90),
+        1 => Some(Rotate::Keep),
+        _ => None,
     }
 }
 
+pub fn media_type_from_path<P: AsRef<Path>>(path: P) -> Option<MediaType> {
+    let ext = path.as_ref().extension()?.to_str()?;
+    match ext.to_ascii_lowercase().as_str() {
+        "jpg" | "jpeg" | "png" => Some(MediaType::Image),
+        "cr2" | "nef" => Some(MediaType::RawImage),
+        "mov" | "mp4" => Some(MediaType::Video),
+        _ => None,
+    }
+}
+
+pub fn open_raw_image<P: AsRef<Path>>(path: P) -> Result<DynamicImage> {
+    let srgb_img = imagepipe::simple_decode_8bit(path, 0, 0).map_err(|e| anyhow!("{}", e))?;
+    let buf = ImageBuffer::from_raw(
+        srgb_img.width.try_into()?,
+        srgb_img.height.try_into()?,
+        srgb_img.data,
+    )
+    .ok_or(anyhow!("Failed to convert raw to image"))?;
+    Ok(DynamicImage::ImageRgb8(buf))
+}
+
 pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, PathBuf)> {
-    let rotation = find_orientation(&path);
-    // Current original image
-    let img = image::open(path.as_ref())?;
+    let (img, rotation) =
+        match media_type_from_path(path.as_ref()).ok_or(anyhow!("Unknown file type"))? {
+            MediaType::Image => (
+                image::open(path.as_ref())?,
+                find_orientation(path.as_ref()).unwrap_or(Rotate::Keep),
+            ),
+            MediaType::RawImage => (open_raw_image(path.as_ref())?, Rotate::Keep),
+            MediaType::Video => {
+                return Err(anyhow!("No handler for video")).into();
+            }
+        };
+
     let file_name = path.as_ref().file_stem().unwrap();
 
     // Create and save the corresponding thumbnail
