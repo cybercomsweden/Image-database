@@ -141,7 +141,8 @@ async fn populate_database(client: &Client, src_dir: &PathBuf) -> Result<()> {
             VALUES('image', $1, $2, '')
         ",
                 &[
-                    &img.to_str().ok_or(anyhow!("Invalid img path"))?,
+                    &img.to_str()
+                        .ok_or(anyhow!("Invalid path to copied original"))?,
                     &thumbnail
                         .to_str()
                         .ok_or(anyhow!("Invalid thumbnail path"))?,
