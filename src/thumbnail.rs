@@ -105,17 +105,6 @@ impl VideoMetadata {
     }
 }
 
-fn divide(x: u32, y: u32) -> u32 {
-    let z = x as f32 / y as f32;
-    z.ceil() as u32
-}
-
-fn ratio(x1: u32, y1: u32, x2: u32, y2: u32) -> u32 {
-    let z1 = x1 as f32 / y1 as f32;
-    let z2 = x2 as f32 / y2 as f32;
-    (z1 / z2) as u32
-}
-
 fn add_suffix<T: AsRef<str>, U: AsRef<str>>(
     img_path: &std::path::Path,
     suffix: T,
@@ -130,23 +119,6 @@ fn add_suffix<T: AsRef<str>, U: AsRef<str>>(
     let mut dest_path = img_path.to_path_buf();
     dest_path.set_file_name(&os_string);
     Ok(dest_path)
-}
-
-fn create_thumbnail(img: &image::DynamicImage, x_size: u32, y_size: u32) -> image::DynamicImage {
-    let (x, y) = img.dimensions();
-
-    let (new_x, new_y, y_corner, x_corner) = if ratio(x, y, 3, 2) > 0 {
-        let new_x = divide(x * y_size, y);
-        let x_corner = divide(new_x, 2) - divide(x_size, 2);
-        (new_x, y_size, 0, x_corner)
-    } else {
-        let new_y = divide(y * x_size, x);
-        let y_corner = divide(new_y, 2) - divide(y_size, 2);
-        (x_size, new_y, y_corner, 0)
-    };
-
-    let mut resized = img.resize(new_x, new_y, image::FilterType::Gaussian);
-    resized.crop(x_corner, y_corner, x_size, y_size)
 }
 
 fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
@@ -241,7 +213,7 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     fs::copy(&path, &copied_orig)?;
 
     let seam_carv = seam_carving(img);
-    let thumbnail = seam_carv.resize(300, 200, image::FilterType::Gaussian);
+    let thumbnail = seam_carv.resize_exact(300, 200, image::FilterType::Gaussian);
     let thumbnail_path = add_suffix(&dest_path.join(file_name), "_resized", ".jpg")?;
     thumbnail.save(&thumbnail_path)?;
 
@@ -251,17 +223,14 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
 pub fn seam_carving(img: image::DynamicImage) -> image::DynamicImage {
     let (width, height) = img.dimensions();
     let aspect_ratio = width as f32 / height as f32;
-    println!("aspect ratio: {}", aspect_ratio);
     if aspect_ratio as f32 == 1.5 {
         // already 3:2 format
         return img;
     } else if aspect_ratio as f32 > 1.5 {
         let new_width = (height as f32 * 1.5).ceil() as u32;
-        println!("dimensions {} {}", new_width, height);
         return DynamicImage::ImageRgba8(seamcarving::resize(&img, new_width, height));
     } else {
         let new_height = (width as f32 / 1.5).ceil() as u32;
-        println!("dimensions {} {}", width, new_height);
         return DynamicImage::ImageRgba8(seamcarving::resize(&img, width, new_height));
     }
 }
