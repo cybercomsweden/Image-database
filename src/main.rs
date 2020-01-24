@@ -10,11 +10,13 @@ use walkdir::WalkDir;
 mod config;
 mod coord;
 mod error;
+mod metadata;
 mod model;
 mod thumbnail;
 
 use crate::config::Config;
 use crate::error::Result;
+use crate::metadata::extract_metadata;
 use crate::model::{create_schema, Entity};
 use crate::thumbnail::{copy_and_create_thumbnail, media_type_from_path};
 
@@ -177,6 +179,12 @@ enum Cmd {
 
     /// Initialize database
     InitDb,
+
+    /// Get metadata from the image provided
+    Metadata {
+        #[structopt(parse(from_os_str))]
+        path: PathBuf,
+    },
 }
 
 #[derive(Debug, StructOpt)]
@@ -204,6 +212,9 @@ async fn main() -> Result<()> {
         }
         Cmd::InitDb => {
             create_schema(&get_db(config).await?).await?;
+        }
+        Cmd::Metadata { path } => {
+            println!("{:#?}", extract_metadata(&path)?);
         }
     }
     Ok(())

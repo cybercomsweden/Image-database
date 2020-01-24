@@ -11,13 +11,33 @@ fn to_dec_degrees(value: f64) -> (isize, isize, isize) {
     return (d as isize, m as isize, s as isize);
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Location {
     pub latitude: f64,
     pub longitude: f64,
 }
 
 impl Location {
+    pub fn new(latitude: f64, longitude: f64) -> Self {
+        Self {
+            latitude,
+            longitude,
+        }
+    }
+
+    pub fn from_dec_degrees(
+        lat_d: f64,
+        lat_m: f64,
+        lat_s: f64,
+        lon_d: f64,
+        lon_m: f64,
+        lon_s: f64,
+    ) -> Self {
+        let lat = lat_d + lat_m / 60.0 + lat_s / 3600.0;
+        let lon = lon_d + lon_m / 60.0 + lon_s / 3600.0;
+        Self::new(lat, lon)
+    }
+
     pub fn from_postgis_ewkb(raw: &[u8]) -> Result<Self> {
         // See https://github.com/postgis/postgis/blob/master/doc/ZMSgeoms.txt for information on
         // format structure

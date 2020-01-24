@@ -122,7 +122,7 @@ fn add_suffix<T: AsRef<str>, U: AsRef<str>>(
 }
 
 fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
-    let file = std::fs::File::open(path).unwrap();
+    let file = fs::File::open(path).unwrap();
     let reader = exif::Reader::new(&mut std::io::BufReader::new(&file)).unwrap();
 
     let exif_orientation = reader.get_field(exif::Tag::Orientation, exif::In::PRIMARY)?;
