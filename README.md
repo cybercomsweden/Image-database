@@ -33,3 +33,9 @@ To clean up the data base:
 
 This will create a database superuser (-s) which can create new databases (-d) and new roles (-r) and a database named backlog.
 
+## Frontend
+```
+npm install
+```
+To compile javascript code:
+npm run parcel watch src/index.jsx

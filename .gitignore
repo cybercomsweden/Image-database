@@ -1,4 +1,9 @@
 /Cargo.lock
+/config.toml
 /dest
+/dist
+/node_modules
 /target
 **/*.rs.bk
+/package-lock.json
+.cache/

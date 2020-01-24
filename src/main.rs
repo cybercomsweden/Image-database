@@ -49,6 +49,14 @@ async fn show_media(req: HttpRequest) -> Result<NamedFile> {
     Ok(NamedFile::open(path)?)
 }
 
+async fn static_html() -> Result<NamedFile> {
+    Ok(NamedFile::open("src/index.html")?)
+}
+
+async fn static_js() -> Result<NamedFile> {
+    Ok(NamedFile::open("dist/index.js")?)
+}
+
 async fn static_css() -> Result<NamedFile> {
     Ok(NamedFile::open("src/stylesheet.css")?)
 }
@@ -111,6 +119,8 @@ async fn run_server(config: Config) -> Result<()> {
             .route("/", web::get().to(list_from_database))
             .route("/media/{media:.*}", web::get().to(show_media))
             .route("/static/stylesheet.css", web::get().to(static_css))
+            .route("/static/index.html", web::get().to(static_html))
+            .route("/static/index.js", web::get().to(static_js))
     })
     .bind("127.0.0.1:5000")?
     .run()
