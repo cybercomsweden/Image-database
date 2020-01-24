@@ -1,7 +1,7 @@
 use actix_files::NamedFile;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
-use futures::FutureExt;
+use futures::{FutureExt, StreamExt};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
@@ -64,15 +64,10 @@ async fn static_css() -> Result<NamedFile> {
 }
 
 async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
-    let rows = db.query("SELECT * FROM entity", &[]).await?;
-    if rows.len() == 0 {
-        return Ok("No data in database".into());
-    }
-
-    let mut vect = Vec::new();
-    for row in rows {
-        let entity = Entity::from_row(&row)?;
-        vect.push(format!(
+    let mut html_thumbnails = Vec::new();
+    let mut entities = Box::pin(Entity::list_desc(&db).await?);
+    while let Some(entity) = entities.next().await.transpose()? {
+        html_thumbnails.push(format!(
             r#"<div class="media-thumbnail"><img src="/media/{}"></div>"#,
             &entity
                 .thumbnail_path
@@ -104,7 +99,7 @@ async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
          </body>
          </html>
         "#,
-        vect.join("\n")
+        html_thumbnails.join("\n")
     );
     Ok(HttpResponse::Ok().content_type("text/html").body(content))
 }

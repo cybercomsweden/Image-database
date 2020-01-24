@@ -11,7 +11,7 @@ fn to_dec_degrees(value: f64) -> (isize, isize, isize) {
     return (d as isize, m as isize, s as isize);
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Location {
     pub latitude: f64,
     pub longitude: f64,
