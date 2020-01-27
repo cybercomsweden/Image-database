@@ -36,5 +36,44 @@ pub async fn create_schema(client: &Client) -> Result<()> {
             &[],
         )
         .await?;
+    client
+        .execute(
+            "
+                DO $$ BEGIN
+                    CREATE TYPE tag_type AS ENUM ('person', 'place', 'event', 'other');
+                EXCEPTION
+                    WHEN duplicate_object THEN null;
+                END $$
+            ",
+            &[],
+        )
+        .await?;
+    client
+        .execute(
+            "
+                CREATE TABLE IF NOT EXISTS tag(
+                    id serial PRIMARY KEY NOT NULL,
+                    pid integer references tag(id),
+                    canonical_name varchar NOT NULL,
+                    name varchar NOT NULL,
+                    type tag_type NOT NULL,
+                    unique (canonical_name)
+                )
+            ",
+            &[],
+        )
+        .await?;
+    client
+        .execute(
+            "
+                CREATE TABLE IF NOT EXISTS tag_to_entity(
+                    tid integer NOT NULL,
+                    eid integer NOT NULL,
+                    unique (tid, eid)
+                )
+            ",
+            &[],
+        )
+        .await?;
     Ok(())
 }

@@ -17,7 +17,7 @@ mod thumbnail;
 use crate::config::Config;
 use crate::error::Result;
 use crate::metadata::extract_metadata;
-use crate::model::{create_schema, Entity};
+use crate::model::{create_schema, Entity, Tag};
 use crate::thumbnail::{copy_and_create_thumbnail, media_type_from_path};
 
 type DbConn = Client;
@@ -180,6 +180,26 @@ enum Cmd {
         #[structopt(parse(from_os_str))]
         path: PathBuf,
     },
+
+    Tag(SubCmdTag),
+}
+
+#[derive(Debug, StructOpt)]
+enum SubCmdTag {
+    /// Add a new tag to the db, on the format: name type Option(parent)
+    Add {
+        #[structopt(short = "n", long = "name")]
+        name: String,
+
+        #[structopt(short = "t", long = "type")]
+        tag_type: String,
+
+        #[structopt(short = "p", long = "parent")]
+        parent: Option<i32>,
+    },
+
+    /// List all present tags and their relation
+    List,
 }
 
 #[derive(Debug, StructOpt)]
@@ -210,6 +230,22 @@ async fn main() -> Result<()> {
         }
         Cmd::Metadata { path } => {
             println!("{:#?}", extract_metadata(&path)?);
+        }
+        Cmd::Tag(SubCmdTag::Add {
+            name,
+            tag_type,
+            parent,
+        }) => {
+            Tag::insert(
+                &get_db(config).await?,
+                name.as_str(),
+                tag_type.as_str(),
+                parent,
+            )
+            .await?;
+        }
+        Cmd::Tag(SubCmdTag::List) => {
+            println!("TODO List tags");
         }
     }
     Ok(())

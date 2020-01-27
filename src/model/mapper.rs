@@ -1,10 +1,12 @@
 use chrono::{DateTime, Utc};
 use futures::{Stream, StreamExt};
+use regex::Regex;
 use std::borrow::Borrow;
+use std::convert::TryFrom;
 use std::path::{Path, PathBuf};
 use tokio_postgres::{Client, Row};
 
-use super::types::EntityType;
+use super::types::{EntityType, TagType};
 use crate::coord::Location;
 use crate::error::Result;
 
@@ -18,6 +20,15 @@ pub struct Entity {
     pub uploaded: DateTime<Utc>,
     pub created: Option<DateTime<Utc>>,
     pub location: Option<Location>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Tag {
+    pub id: i32,
+    pub pid: Option<i32>,
+    pub canonical_name: String,
+    pub name: String,
+    pub tag_type: TagType,
 }
 
 impl Entity {
@@ -69,5 +80,47 @@ impl Entity {
             )
             .await?
             .map(|row| Ok(Self::from_row(&row?)?)))
+    }
+}
+
+impl Tag {
+    pub const COLS: [&'static str; 5] = ["id", "pid", "canonical_name", "name", "tag_type"];
+
+    pub fn from_row(row: &Row) -> Result<Self> {
+        Ok(Self {
+            id: row.try_get::<_, i32>(0)?,
+            pid: row.try_get::<_, Option<i32>>(1)?,
+            canonical_name: row.try_get::<_, String>(2)?,
+            name: row.try_get::<_, String>(3)?,
+            tag_type: row.try_get::<_, TagType>(4)?,
+        })
+    }
+
+    fn canonical_name(name: &str) -> Result<String> {
+        // NOTE: only tag in english atm
+        let re_char = Regex::new(r"[^A-Za-z0-9\s]")?;
+        let re_space = Regex::new(r"\s+")?;
+        let name = re_char.replace_all(&name, "");
+        let name = re_space.replace_all(&name, "-");
+        Ok(name.to_lowercase())
+    }
+
+    pub async fn insert(
+        client: &Client,
+        name: &str,
+        tag_type: &str,
+        parent: Option<i32>,
+    ) -> Result<()> {
+        let tag = TagType::try_from(tag_type)?;
+        client
+            .execute(
+                "
+                    INSERT INTO tag(pid, canonical_name, name, type)
+                    VALUES($1, $2, $3, $4)
+                ",
+                &[&parent, &Self::canonical_name(&name)?, &name, &tag],
+            )
+            .await?;
+        Ok(())
     }
 }
