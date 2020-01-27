@@ -84,7 +84,7 @@ impl Entity {
 }
 
 impl Tag {
-    pub const COLS: [&'static str; 5] = ["id", "pid", "canonical_name", "name", "tag_type"];
+    pub const COLS: [&'static str; 5] = ["id", "pid", "canonical_name", "name", "type"];
 
     pub fn from_row(row: &Row) -> Result<Self> {
         Ok(Self {
@@ -110,17 +110,23 @@ impl Tag {
         name: &str,
         tag_type: &str,
         parent: Option<i32>,
-    ) -> Result<()> {
+    ) -> Result<Self> {
         let tag = TagType::try_from(tag_type)?;
-        client
-            .execute(
-                "
-                    INSERT INTO tag(pid, canonical_name, name, type)
-                    VALUES($1, $2, $3, $4)
-                ",
-                &[&parent, &Self::canonical_name(&name)?, &name, &tag],
-            )
-            .await?;
-        Ok(())
+        Ok(Self::from_row(
+            &client
+                .query_one(
+                    format!(
+                        "
+                        INSERT INTO tag(pid, canonical_name, name, type)
+                        VALUES($1, $2, $3, $4)
+                        RETURNING {}
+                    ",
+                        Self::COLS.join(", "),
+                    )
+                    .as_str(),
+                    &[&parent, &Self::canonical_name(&name)?, &name, &tag],
+                )
+                .await?,
+        )?)
     }
 }

@@ -236,13 +236,15 @@ async fn main() -> Result<()> {
             tag_type,
             parent,
         }) => {
-            Tag::insert(
-                &get_db(config).await?,
-                name.as_str(),
-                tag_type.as_str(),
-                parent,
-            )
-            .await?;
+            dbg!(
+                Tag::insert(
+                    &get_db(config).await?,
+                    name.as_str(),
+                    tag_type.as_str(),
+                    parent,
+                )
+                .await?
+            );
         }
         Cmd::Tag(SubCmdTag::List) => {
             println!("TODO List tags");
