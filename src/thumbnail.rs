@@ -235,7 +235,7 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
         Err(_) => process::exit(1),
     }
 
-    let thumbnail = tmp.resize_exact(300, 200, image::FilterType::Gaussian);
+    let thumbnail = tmp.resize_exact(300, 200, image::FilterType::CatmullRom);
     let thumbnail_path = add_suffix(&dest_path.join(file_name), "_thumbnail", ".jpg")?;
     thumbnail.save(&thumbnail_path)?;
 
