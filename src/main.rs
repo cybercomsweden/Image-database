@@ -3,10 +3,10 @@ use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
 use futures::{FutureExt, StreamExt};
 use std::path::PathBuf;
-use structopt::StructOpt;
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
 use walkdir::WalkDir;
 
+mod cli;
 mod config;
 mod coord;
 mod error;
@@ -14,6 +14,7 @@ mod metadata;
 mod model;
 mod thumbnail;
 
+use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
 use crate::metadata::extract_metadata;
@@ -160,65 +161,16 @@ async fn populate_database(client: &Client, src_dir: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, StructOpt)]
-enum Cmd {
-    /// Default, starts the application
-    Run,
-
-    /// Takes the folder provided and copies it to it pre configured folder with corresponding
-    /// thumbnails
-    Import {
-        #[structopt(parse(from_os_str))]
-        path: PathBuf,
-    },
-
-    /// Initialize database
-    InitDb,
-
-    /// Get metadata from the image provided
-    Metadata {
-        #[structopt(parse(from_os_str))]
-        path: PathBuf,
-    },
-
-    Tag(SubCmdTag),
-}
-
-#[derive(Debug, StructOpt)]
-enum SubCmdTag {
-    /// Add a new tag to the db, on the format: name type Option(parent)
-    Add {
-        #[structopt(short = "n", long = "name")]
-        name: String,
-
-        #[structopt(short = "t", long = "type")]
-        tag_type: String,
-
-        #[structopt(short = "p", long = "parent")]
-        parent: Option<i32>,
-    },
-
-    /// List all present tags and their relation
-    List,
-}
-
-#[derive(Debug, StructOpt)]
-struct Opt {
-    #[structopt(subcommand)]
-    cmd: Option<Cmd>,
-}
-
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    let opt = Opt::from_args();
-
+    let args = Args::from_args();
     let config = if let Ok(config_str) = std::fs::read_to_string("config.toml") {
         toml::from_str(&config_str)?
     } else {
         Config::default()
     };
 
-    match opt.cmd.unwrap_or(Cmd::Run) {
+    match args.cmd.unwrap_or(Cmd::Run) {
         Cmd::Run => {
             run_server(config).await?;
         }
