@@ -4,8 +4,8 @@ use serde_json::{json, Value};
 use std::convert::TryInto;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::process;
+use std::process::Command;
 
 use crate::face_detection::face_detection;
 
@@ -138,7 +138,8 @@ fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
 }
 
 fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
-    let metadata = VideoMetadata::from_file(orig_path.as_ref()).context("failed to get meta data, video")?;
+    let metadata =
+        VideoMetadata::from_file(orig_path.as_ref()).context("failed to get meta data, video")?;
 
     let skip_to = metadata.duration / 2.0;
 
@@ -156,7 +157,8 @@ fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
         .args(&["-pix_fmt", "rgb24"]) // 24-bit RGB format for pixels
         .args(&["-vcodec", "rawvideo"])
         .arg("-") // Output to stdout
-        .output().context("failed to extract thumpnail")?;
+        .output()
+        .context("failed to extract thumpnail")?;
 
     let (height, width) = if metadata.rotation == Rotate::Keep || metadata.rotation == Rotate::Cw180
     {
@@ -197,7 +199,10 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
                 image::open(path.as_ref()).context("failed to open image")?,
                 find_orientation(path.as_ref()).unwrap_or(Rotate::Keep),
             ),
-            MediaType::RawImage => (open_raw_image(path.as_ref()).context("failed to open raw image")?, Rotate::Keep),
+            MediaType::RawImage => (
+                open_raw_image(path.as_ref()).context("failed to open raw image")?,
+                Rotate::Keep,
+            ),
             MediaType::Video => (get_video_snapshot(path.as_ref())?, Rotate::Keep),
         };
 
@@ -216,7 +221,7 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     fs::copy(&path, &copied_orig)?;
 
     let detection = face_detection(&img);
-    let tmp : image::DynamicImage;
+    let tmp: image::DynamicImage;
     match detection {
         Ok(faces) => {
             // only carve if we do not have any visible faces in the image

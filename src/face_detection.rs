@@ -4,7 +4,6 @@ use tensorflow::{Graph, ImportGraphDefOptions, Session, SessionOptions, SessionR
 
 use image::GenericImageView;
 
-
 #[derive(Copy, Clone, Debug)]
 pub struct Bbox {
     pub x1: f32,
@@ -86,4 +85,4 @@ pub fn face_detection(input_image: &image::DynamicImage) -> Result<Vec<Bbox>, Bo
         })
         .collect();
     Ok(bboxes)
-  }
+}
