@@ -8,8 +8,9 @@ pub enum Cmd {
 
     /// Import supported media recursively from the given folder
     Import {
+        /// One or more files or directories to import
         #[structopt(parse(from_os_str))]
-        path: PathBuf,
+        paths: Vec<PathBuf>,
     },
 
     /// Initialize database

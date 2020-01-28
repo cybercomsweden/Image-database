@@ -125,8 +125,8 @@ async fn run_server(config: Config) -> Result<()> {
     .await?)
 }
 
-async fn populate_database(client: &Client, src_dir: &PathBuf) -> Result<()> {
-    for path in WalkDir::new(src_dir).follow_links(true) {
+async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<()> {
+    for path in src_dirs.iter().map(|src_dir| WalkDir::new(src_dir).follow_links(true)).flatten() {
         let path = path?.into_path();
         if media_type_from_path(&path).is_none() {
             println!("Ignoring {:?}", path);
@@ -174,8 +174,11 @@ async fn main() -> Result<()> {
         Cmd::Run => {
             run_server(config).await?;
         }
-        Cmd::Import { path } => {
-            populate_database(&get_db(config).await?, &path).await?;
+        Cmd::Import { paths } => {
+            if paths.len() == 0 {
+                Err(anyhow!("Expected at least one path"))?;
+            }
+            populate_database(&get_db(config).await?, &paths).await?;
         }
         Cmd::InitDb => {
             create_schema(&get_db(config).await?).await?;
