@@ -5,6 +5,9 @@ use std::convert::TryInto;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::process;
+
+use crate::face_detection::face_detection;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MediaType {
@@ -200,7 +203,7 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
 
     let file_name = path.as_ref().file_stem().unwrap();
 
-    let img = match rotation {
+    let mut img = match rotation {
         Rotate::Keep => img,
         Rotate::Cw90 => img.rotate90(),
         Rotate::Cw180 => img.rotate180(),
@@ -212,25 +215,55 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     let copied_orig = dest_path.join(path.as_ref().file_name().unwrap());
     fs::copy(&path, &copied_orig)?;
 
-    let seam_carv = seam_carving(img);
-    let thumbnail = seam_carv.resize_exact(300, 200, image::FilterType::Gaussian);
-    let thumbnail_path = add_suffix(&dest_path.join(file_name), "_resized", ".jpg")?;
+    let detection = face_detection(&img);
+    let tmp : image::DynamicImage;
+    match detection {
+        Ok(faces) => {
+            // only carve if we do not have any visible faces in the image
+            if faces.len() == 0 {
+                tmp = seam_carving(&img);
+            } else {
+                let (new_width, new_height) = calc_new_measurements(&img);
+                tmp = img.crop(0, 0, new_width, new_height);
+            }
+        }
+        Err(_) => process::exit(1),
+    }
+
+    let thumbnail = tmp.resize_exact(300, 200, image::FilterType::Gaussian);
+    let thumbnail_path = add_suffix(&dest_path.join(file_name), "_thumbnail", ".jpg")?;
     thumbnail.save(&thumbnail_path)?;
 
     Ok((copied_orig, thumbnail_path))
 }
 
-pub fn seam_carving(img: image::DynamicImage) -> image::DynamicImage {
+fn seam_carving(img: &image::DynamicImage) -> image::DynamicImage {
     let (width, height) = img.dimensions();
     let aspect_ratio = width as f32 / height as f32;
     if aspect_ratio as f32 == 1.5 {
         // already 3:2 format
-        return img;
+        return img.clone();
     } else if aspect_ratio as f32 > 1.5 {
         let new_width = (height as f32 * 1.5).ceil() as u32;
-        return DynamicImage::ImageRgba8(seamcarving::resize(&img, new_width, height));
+        return DynamicImage::ImageRgba8(seamcarving::resize(img, new_width, height));
     } else {
         let new_height = (width as f32 / 1.5).ceil() as u32;
-        return DynamicImage::ImageRgba8(seamcarving::resize(&img, width, new_height));
+        return DynamicImage::ImageRgba8(seamcarving::resize(img, width, new_height));
+    }
+}
+
+// return a tuple with (width, height)
+fn calc_new_measurements(img: &image::DynamicImage) -> (u32, u32) {
+    let (width, height) = img.dimensions();
+    let aspect_ratio = width as f32 / height as f32;
+    if aspect_ratio as f32 == 1.5 {
+        // already 3:2 format
+        return (width, height);
+    } else if aspect_ratio as f32 > 1.5 {
+        let new_width = (height as f32 * 1.5).ceil() as u32;
+        return (new_width, height);
+    } else {
+        let new_height = (width as f32 / 1.5).ceil() as u32;
+        return (width, new_height);
     }
 }

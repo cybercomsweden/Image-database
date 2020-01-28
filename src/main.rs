@@ -11,6 +11,7 @@ mod config;
 mod coord;
 mod error;
 mod metadata;
+mod face_detection;
 mod model;
 mod thumbnail;
 
