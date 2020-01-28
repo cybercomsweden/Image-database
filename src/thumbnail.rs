@@ -131,8 +131,10 @@ fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
     let exif_orientation = reader.get_field(exif::Tag::Orientation, exif::In::PRIMARY)?;
 
     match exif_orientation.value.get_uint(0)? {
-        6 => Some(Rotate::Cw90),
         1 => Some(Rotate::Keep),
+        3 => Some(Rotate::Cw180),
+        6 => Some(Rotate::Cw90),
+        8 => Some(Rotate::Ccw90),
         _ => None,
     }
 }
