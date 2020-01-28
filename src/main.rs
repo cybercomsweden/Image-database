@@ -2,6 +2,7 @@ use actix_files::NamedFile;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
 use futures::{FutureExt, StreamExt};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
 use walkdir::WalkDir;
@@ -19,7 +20,7 @@ use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
 use crate::metadata::extract_metadata;
-use crate::model::{create_schema, Entity, Tag};
+use crate::model::{create_schema, Entity, Tag, TagToEntity};
 use crate::thumbnail::{copy_and_create_thumbnail, media_type_from_path};
 
 type DbConn = Client;
@@ -166,6 +167,45 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
     Ok(())
 }
 
+fn list_children(
+    hm: &HashMap<Option<i32>, std::vec::Vec<Tag>>,
+    pid: i32,
+    mut tree: std::vec::Vec<String>,
+) {
+    let children = hm.get(&Some(pid));
+    if children.is_none() {
+        println!("{:?}", tree);
+        return;
+    }
+    for child in children.unwrap() {
+        tree.push(child.canonical_name.clone());
+        list_children(&hm, child.id, tree.clone());
+    }
+}
+
+async fn list_tags(client: &Client) -> Result<()> {
+    let mut hm = HashMap::new();
+    let mut tags = Box::pin(Tag::list(&client).await?);
+    while let Some(tag) = tags.next().await.transpose()? {
+        hm.entry(tag.pid).or_insert(vec![]).push(tag);
+    }
+    for parent in hm.get(&None).ok_or(anyhow!("No tags without parent"))? {
+        list_children(&hm, parent.id, vec![parent.canonical_name.clone()]);
+    }
+    Ok(())
+}
+
+async fn tag_image(client: &Client, path: &PathBuf, tag: String) -> Result<()> {
+    let tag = Tag::get_from_canonical_name(&client, tag)
+        .await
+        .ok_or(anyhow!("Tag not present"))?;
+    let entity = Entity::get_from_path(&client, path.to_str().ok_or(anyhow!("Path not string"))?)
+        .await
+        .ok_or(anyhow!("Path not present"))?;
+    TagToEntity::insert(&client, &tag.id, &entity.id).await?;
+    Ok(())
+}
+
 #[actix_rt::main]
 async fn main() -> Result<()> {
     let args = Args::from_args();
@@ -207,7 +247,10 @@ async fn main() -> Result<()> {
             );
         }
         Cmd::Tag(SubCmdTag::List) => {
-            println!("TODO List tags");
+            list_tags(&get_db(config).await?).await?;
+        }
+        Cmd::Tag(SubCmdTag::Image { path, tag }) => {
+            tag_image(&get_db(config).await?, &path, tag).await?;
         }
     }
     Ok(())

@@ -45,6 +45,14 @@ pub enum SubCmdTag {
 
     /// List all present tags and their relation
     List,
+    /// Add tag to image
+    Image {
+        #[structopt(parse(from_os_str))]
+        path: PathBuf,
+
+        #[structopt(short = "t", long = "tag")]
+        tag: String,
+    },
 }
 
 #[derive(Debug, StructOpt)]

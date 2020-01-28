@@ -67,8 +67,8 @@ pub async fn create_schema(client: &Client) -> Result<()> {
         .execute(
             "
                 CREATE TABLE IF NOT EXISTS tag_to_entity(
-                    tid integer NOT NULL,
-                    eid integer NOT NULL,
+                    tid integer NOT NULL references tag(id),
+                    eid integer NOT NULL references entity(id),
                     unique (tid, eid)
                 )
             ",
