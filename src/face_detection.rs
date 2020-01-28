@@ -1,8 +1,6 @@
-use std::error::Error;
-
-use tensorflow::{Graph, ImportGraphDefOptions, Session, SessionOptions, SessionRunArgs, Tensor};
-
 use image::GenericImageView;
+use std::error::Error;
+use tensorflow::{Graph, ImportGraphDefOptions, Session, SessionOptions, SessionRunArgs, Tensor};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Bbox {
@@ -13,18 +11,32 @@ pub struct Bbox {
     pub prob: f32,
 }
 
-// x,y for the length of bounding box
+// return width, height of the bounding box
 fn calc_length(bbox: Bbox) -> (f32, f32) {
     ((bbox.x2 - bbox.x1), (bbox.y2 - bbox.y1))
 }
 
-// x_mid, y_mid
-fn calc_midpoint(bbox: Bbox) -> (u32, u32) {
+// x_mid, y_mid of the provided bounding box
+pub fn calc_midpoint(bbox: Bbox) -> (u32, u32) {
     let (width_len, height_len) = calc_length(bbox);
     (
         (bbox.x1 + width_len / 2.0) as u32,
         (bbox.y1 + height_len / 2.0) as u32,
     )
+}
+
+pub fn largest_bbox(bboxes: Vec<Bbox>) -> Bbox {
+    let mut area: u32 = 0;
+    let mut largest: Bbox = bboxes[0];
+    for bbox in bboxes {
+        let lengths = calc_length(bbox);
+        let tmp_area = (lengths.0 * lengths.1) as u32;
+        if tmp_area > area {
+            area = tmp_area;
+            largest = bbox;
+        }
+    }
+    return largest;
 }
 
 pub fn face_detection(input_image: &image::DynamicImage) -> Result<Vec<Bbox>, Box<dyn Error>> {

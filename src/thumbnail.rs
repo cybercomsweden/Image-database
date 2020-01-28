@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::process::Command;
 
-use crate::face_detection::face_detection;
+use crate::face_detection::{calc_midpoint, face_detection, largest_bbox, Bbox};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MediaType {
@@ -230,8 +230,10 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
             if faces.len() == 0 {
                 tmp = seam_carving(&img);
             } else {
-                let (new_width, new_height) = calc_new_measurements(&img);
-                tmp = img.crop(0, 0, new_width, new_height);
+                let largest_bbox = largest_bbox(faces);
+                let (start_x, start_y, new_width, new_height) =
+                    calc_new_measurements(&img, largest_bbox);
+                tmp = img.crop(start_x, start_y, new_width, new_height);
             }
         }
         Err(_) => process::exit(1),
@@ -259,18 +261,29 @@ fn seam_carving(img: &image::DynamicImage) -> image::DynamicImage {
     }
 }
 
-// return a tuple with (width, height)
-fn calc_new_measurements(img: &image::DynamicImage) -> (u32, u32) {
+// return a tuple with (start_x, start_y, width, height)
+fn calc_new_measurements(img: &image::DynamicImage, bbox: Bbox) -> (u32, u32, u32, u32) {
     let (width, height) = img.dimensions();
+    let (x_mid, y_mid) = calc_midpoint(bbox);
     let aspect_ratio = width as f32 / height as f32;
     if aspect_ratio as f32 == 1.5 {
         // already 3:2 format
-        return (width, height);
+        return (0, 0, width, height);
     } else if aspect_ratio as f32 > 1.5 {
         let new_width = (height as f32 * 1.5).ceil() as u32;
-        return (new_width, height);
+        let diff = (x_mid - new_width / 2) as i32;
+        if diff >= 0 {
+            return (diff as u32, 0, new_width, height);
+        } else {
+            return (0, 0, new_width, height);
+        }
     } else {
         let new_height = (width as f32 / 1.5).ceil() as u32;
-        return (width, new_height);
+        let diff = (y_mid - new_height / 2) as i32;
+        if diff >= 0 {
+            return (0, diff as u32, width, new_height);
+        } else {
+            return (0, 0, width, new_height);
+        }
     }
 }
