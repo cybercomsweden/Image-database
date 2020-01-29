@@ -5,6 +5,7 @@ use regex::Regex;
 use std::borrow::Borrow;
 use std::convert::TryFrom;
 use std::path::{Path, PathBuf};
+use tokio_postgres::types::ToSql;
 use tokio_postgres::{Client, Row};
 
 use super::types::{EntityType, TagType};
@@ -163,28 +164,6 @@ impl Tag {
     }
 
     pub async fn list(client: &Client) -> Result<impl Stream<Item = Result<Self>>> {
-        //Ok(client
-        //    .query_raw(
-        //        format!(
-        //            "
-        //            WITH RECURSIVE recursetree AS (
-        //                SELECT * FROM tag WHERE pid = NULL
-        //              UNION
-        //                SELECT t.*
-        //                FROM tag t
-        //                JOIN recursetree rt ON rt.id = t.pid
-        //            )
-        //            SELECT *
-        //            FROM recursetree
-        //            RETURNING {}
-        //       ",
-        //            Self::COLS.join(", "),
-        //        )
-        //        .as_str(),
-        //        vec![],
-        //    )
-        //    .await?
-        //    .map(|row| Ok(Self::from_row(&row?)?)))
         Ok(client
             .query_raw(
                 format!("SELECT {} FROM tag", Self::COLS.join(", ")).as_str(),
@@ -212,6 +191,51 @@ impl Tag {
             .flatten()?;
         Self::from_row(&row).ok()
     }
+
+    pub async fn get<T: Borrow<i32>>(client: &Client, id: T) -> Option<Self> {
+        let row = client
+            .query_opt(
+                format!("SELECT {} FROM tag WHERE id = $1", Self::COLS.join(", ")).as_str(),
+                &[id.borrow()],
+            )
+            .await
+            .ok()
+            .flatten()?;
+        Self::from_row(&row).ok()
+    }
+
+    pub async fn search<T: Borrow<str>>(
+        client: &Client,
+        tag: T,
+    ) -> Result<impl Stream<Item = Result<Self>>> {
+        Ok(client
+            .query_raw(
+                format!(
+                    "
+                    WITH RECURSIVE recursetree AS (
+                        SELECT * FROM tag WHERE canonical_name = $1
+                      UNION
+                        SELECT t.*
+                        FROM tag t
+                        JOIN recursetree rt ON rt.id = t.pid
+                    )
+                    SELECT {}
+                    FROM recursetree
+               ",
+                    Self::COLS.join(", "),
+                )
+                .as_str(),
+                slice_iter(&[&tag.borrow()]),
+            )
+            .await?
+            .map(|row| Ok(Self::from_row(&row?)?)))
+    }
+}
+
+fn slice_iter<'a>(
+    s: &'a [&'a (dyn ToSql + Sync)],
+) -> impl ExactSizeIterator<Item = &'a dyn ToSql> + 'a {
+    s.iter().map(|s| *s as _)
 }
 
 impl TagToEntity {
@@ -241,5 +265,39 @@ impl TagToEntity {
                 )
                 .await?,
         )?)
+    }
+
+    pub async fn get_from_tid<T: Borrow<i32>>(
+        client: &Client,
+        tid: T,
+    ) -> Result<impl Stream<Item = Result<Self>>> {
+        Ok(client
+            .query_raw(
+                format!(
+                    "SELECT {} FROM tag_to_entity WHERE tid = $1",
+                    Self::COLS.join(", ")
+                )
+                .as_str(),
+                slice_iter(&[&tid.borrow()]),
+            )
+            .await?
+            .map(|row| Ok(Self::from_row(&row?)?)))
+    }
+
+    pub async fn get_from_eid<T: Borrow<i32>>(
+        client: &Client,
+        eid: T,
+    ) -> Result<impl Stream<Item = Result<Self>>> {
+        Ok(client
+            .query_raw(
+                format!(
+                    "SELECT {} FROM tag_to_entity WHERE eid = $1",
+                    Self::COLS.join(", ")
+                )
+                .as_str(),
+                slice_iter(&[&eid.borrow()]),
+            )
+            .await?
+            .map(|row| Ok(Self::from_row(&row?)?)))
     }
 }

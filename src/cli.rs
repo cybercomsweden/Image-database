@@ -22,6 +22,11 @@ pub enum Cmd {
         path: PathBuf,
     },
 
+    Search {
+        #[structopt(parse(from_str))]
+        tag: String,
+    },
+
     /// View and manage tags
     Tag(SubCmdTag),
 }
