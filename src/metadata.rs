@@ -71,7 +71,6 @@ impl VideoMetadata {
             .output()?;
 
         let json_output: serdeValue = serde_json::from_str(std::str::from_utf8(&proc.stdout)?)?;
-        println!("{:#?}", json_output);
         let raw_metadata = json_output
             .as_object()
             .ok_or(anyhow!("Not a JSON object"))?;
