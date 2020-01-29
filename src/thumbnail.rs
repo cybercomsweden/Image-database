@@ -39,7 +39,7 @@ fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
     let exif_orientation = reader.get_field(exif::Tag::Orientation, exif::In::PRIMARY)?;
 
     match exif_orientation.value.get_uint(0)? {
-        1 => Some(Rotate::Keep),
+        1 => Some(Rotate::Zero),
         3 => Some(Rotate::Cw180),
         6 => Some(Rotate::Cw90),
         8 => Some(Rotate::Ccw90),
@@ -49,7 +49,7 @@ fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
 
 fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
     let metadata =
-        VideoMetadata::from_file(orig_path.as_ref()).context("failed to get meta data, video")?;
+        VideoMetadata::from_file(orig_path.as_ref()).context("failed to get metadata, video")?;
 
     let skip_to = metadata.duration / 2.0;
 
@@ -70,7 +70,9 @@ fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
         .output()
         .context("failed to extract thumpnail")?;
 
-    let (height, width) = if metadata.rotation == Rotate::Keep || metadata.rotation == Rotate::Cw180
+    let (height, width) = if metadata.rotation == Some(Rotate::Zero)
+        || metadata.rotation == Some(Rotate::Cw180)
+        || metadata.rotation == None
     {
         (metadata.height, metadata.width)
     } else {
@@ -107,19 +109,19 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
         match media_type_from_path(path.as_ref()).ok_or(anyhow!("Unknown file type"))? {
             MediaType::Image => (
                 image::open(path.as_ref()).context("failed to open image")?,
-                find_orientation(path.as_ref()).unwrap_or(Rotate::Keep),
+                find_orientation(path.as_ref()).unwrap_or(Rotate::Zero),
             ),
             MediaType::RawImage => (
                 open_raw_image(path.as_ref()).context("failed to open raw image")?,
-                Rotate::Keep,
+                Rotate::Zero,
             ),
-            MediaType::Video => (get_video_snapshot(path.as_ref())?, Rotate::Keep),
+            MediaType::Video => (get_video_snapshot(path.as_ref())?, Rotate::Zero),
         };
 
     let file_name = path.as_ref().file_stem().unwrap();
 
     let mut img = match rotation {
-        Rotate::Keep => img,
+        Rotate::Zero => img,
         Rotate::Cw90 => img.rotate90(),
         Rotate::Cw180 => img.rotate180(),
         Rotate::Ccw90 => img.rotate270(),

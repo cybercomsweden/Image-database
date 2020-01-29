@@ -13,7 +13,7 @@ sudo -u postgres createuser -drs $USER
 
 ### Ubuntu 18:
 ```
-sudo apt install postgresql postgis ffmpeg pkg-config libssl-dev
+sudo apt install postgresql postgis ffmpeg pkg-config libssl-dev npm protobuf-compiler libprotobuf-dev
 service postgresql start
 sudo -u postgres createuser -drs $USER
 ```

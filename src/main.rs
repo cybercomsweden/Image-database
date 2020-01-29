@@ -25,10 +25,10 @@ mod thumbnail;
 use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
-use crate::metadata::extract_metadata;
 use crate::model::{create_schema, Entity, EntityType, Tag};
+use crate::metadata::{extract_metadata_image, extract_metadata_video};
 use crate::tags::{list_tags, search_tag, tag_image};
-use crate::thumbnail::{copy_and_create_thumbnail, media_type_from_path};
+use crate::thumbnail::{copy_and_create_thumbnail, media_type_from_path, MediaType};
 
 type DbConn = Client;
 
@@ -190,7 +190,13 @@ async fn main() -> Result<()> {
             create_schema(&get_db(config).await?).await?;
         }
         Cmd::Metadata { path } => {
-            println!("{:#?}", extract_metadata(&path)?);
+            match media_type_from_path(&path).ok_or(anyhow!("Unknown file type"))? {
+                MediaType::Image => (println!("{:#?}", extract_metadata_image(&path)?),),
+                MediaType::RawImage => (println!(
+                    "Showing metadata for raw images is not supported yet"
+                ),),
+                MediaType::Video => (println!("{:#?}", extract_metadata_video(&path)?),),
+            };
         }
         Cmd::Search { tag } => {
             println!("{:#?}", search_tag(&get_db(config).await?, tag).await?);

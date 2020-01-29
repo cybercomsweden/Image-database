@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
+use chrono::{DateTime, FixedOffset};
 use exif::{In, Reader, Tag, Value};
 use fraction::prelude::Fraction;
 use image::GenericImageView;
@@ -25,17 +26,27 @@ pub struct Metadata {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Rotate {
-    Keep,
+    Zero,
     Cw90,
     Ccw90,
     Cw180,
 }
 
+#[derive(Clone, Debug)]
 pub struct VideoMetadata {
     pub width: u32,
     pub height: u32,
     pub duration: f32,
-    pub rotation: Rotate,
+    pub rotation: Option<Rotate>,
+    pub date_time: Option<DateTime<FixedOffset>>,
+    pub framerate: Option<f32>,
+    pub gps_location: Option<Location>,
+}
+
+#[derive(Clone, Debug)]
+pub struct VideoFormat {
+    pub mp4: String,
+    pub mov: String,
 }
 
 fn json_as_u64(json: &serde_json::Map<String, serdeValue>, key: &str) -> Result<u64> {
@@ -59,6 +70,33 @@ fn json_as_object<'a>(
         ))?)
 }
 
+fn get_leaf_value<'a>(
+    json: &'a serde_json::map::Map<std::string::String, serde_json::value::Value>,
+    name: &'a str,
+) -> Result<&'a serde_json::value::Value> {
+    Ok(json
+        .get(name)
+        .ok_or(anyhow!("Missing {} or key does not exist", name))?)
+}
+
+fn map_rotation(rot: &str) -> Result<Rotate> {
+    match rot {
+        "90" => Ok(Rotate::Cw90),
+        "180" => Ok(Rotate::Cw180),
+        "270" => Ok(Rotate::Ccw90),
+        _ => Ok(Rotate::Zero),
+    }
+}
+
+// the gps format is +58.3938+015.5612/
+fn gps_mp4(coord: &str) -> Result<Location> {
+    let coord = coord.replace("/", "");
+    let split: Vec<String> = coord.split("+").map(|s| s.to_string()).collect();
+    let lat = split[1].parse::<f64>()?;
+    let lon = split[2].parse::<f64>()?;
+    Ok(Location::new(lat, lon))
+}
+
 impl VideoMetadata {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file_name = path.as_ref().as_os_str();
@@ -76,16 +114,29 @@ impl VideoMetadata {
             .ok_or(anyhow!("Not a JSON object"))?;
 
         let format = json_as_object(&raw_metadata, "format")?;
-        let duration = format
-            .get("duration")
-            .ok_or(anyhow!("Missing duration"))?
+        let duration = get_leaf_value(format, "duration")?
             .as_str()
-            .ok_or(anyhow!("Duration not string"))?
+            .ok_or(anyhow!("Duration is not string"))?
             .parse::<f32>()?;
 
-        let streams = raw_metadata
-            .get("streams")
-            .ok_or(anyhow!("No streams detected"))?
+        let tags = json_as_object(&format, "tags")?;
+
+        let date_time = tags
+            .get("creation_time")
+            .and_then(|d| d.as_str())
+            .and_then(|r| DateTime::parse_from_rfc3339(r).ok());
+
+        let framerate = tags
+            .get("com.android.capture.fps")
+            .and_then(|l| l.as_str())
+            .and_then(|r| r.parse::<f32>().ok());
+
+        let gps_location = tags
+            .get("location")
+            .and_then(|l| l.as_str())
+            .and_then(|r| gps_mp4(r).ok());
+
+        let streams = get_leaf_value(&raw_metadata, "streams")?
             .as_array()
             .ok_or(anyhow!("Not an array"))?;
         for stream in streams {
@@ -93,21 +144,22 @@ impl VideoMetadata {
             if stream.get("codec_type") != Some(&json!("video")) {
                 continue;
             }
-            let width = json_as_u64(&stream, "width")?.try_into()?;
-            let height = json_as_u64(&stream, "height")?.try_into()?;
+            let width = json_as_u64(&stream, "coded_width")?.try_into()?;
+            let height = json_as_u64(&stream, "coded_height")?.try_into()?;
 
-            let rotate = json_as_object(&stream, "tags")?.get("rotate");
-            let rotation = match rotate.map(|r| r.as_str()).flatten() {
-                Some("90") => Rotate::Cw90,
-                Some("180") => Rotate::Cw180,
-                Some("270") => Rotate::Ccw90,
-                _ => Rotate::Keep,
-            };
+            let rotation = json_as_object(&stream, "tags")?
+                .get("rotate")
+                .and_then(|rot| rot.as_str())
+                .and_then(|r| map_rotation(r).ok());
+            println!("rotation {:?}", rotation);
             return Ok(Self {
                 duration,
                 width,
                 height,
                 rotation,
+                date_time,
+                framerate,
+                gps_location,
             });
         }
 
@@ -190,7 +242,7 @@ fn flash(reader: &Reader) -> Option<bool> {
     }
 }
 
-fn gps(reader: &Reader) -> Option<Location> {
+fn gps_image(reader: &Reader) -> Option<Location> {
     let lat_field = &reader.get_field(Tag::GPSLatitude, In::PRIMARY)?.value;
     let lon_field = &reader.get_field(Tag::GPSLongitude, In::PRIMARY)?.value;
     if let (Value::Rational(lat_dms), Value::Rational(lon_dms)) = (lat_field, lon_field) {
@@ -207,7 +259,7 @@ fn gps(reader: &Reader) -> Option<Location> {
     }
 }
 
-pub fn extract_metadata<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
+pub fn extract_metadata_image<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
     let file = fs::File::open(path.as_ref())?;
     let reader = Reader::new(&mut std::io::BufReader::new(&file))?;
 
@@ -220,7 +272,7 @@ pub fn extract_metadata<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> 
     let aperture = aperture(&reader);
     let iso = field_as_uint(&reader, Tag::PhotographicSensitivity);
     let flash = flash(&reader);
-    let gps_location = gps(&reader);
+    let gps_location = gps_image(&reader);
 
     Ok(Metadata {
         date_time,
@@ -232,4 +284,9 @@ pub fn extract_metadata<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> 
         flash,
         gps_location,
     })
+}
+
+pub fn extract_metadata_video<P: AsRef<std::path::Path>>(path: P) -> Result<VideoMetadata> {
+    //let file = fs::File::open(path.as_ref())?;
+    VideoMetadata::from_file(path)
 }
