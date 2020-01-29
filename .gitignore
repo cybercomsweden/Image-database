@@ -6,5 +6,4 @@
 /target
 **/*.rs.bk
 /package-lock.json
-/src/entity_pb.js
 .cache/

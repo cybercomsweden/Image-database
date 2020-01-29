@@ -3,14 +3,11 @@ use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
 use futures::{FutureExt, StreamExt};
 use std::collections::HashMap;
-use prost::Message;
-use std::convert::TryFrom;
 use std::path::PathBuf;
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
 use walkdir::WalkDir;
 
 mod cli;
-mod api;
 mod config;
 mod coord;
 mod error;
@@ -70,17 +67,44 @@ async fn static_css() -> Result<NamedFile> {
 }
 
 async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
+    let mut html_thumbnails = Vec::new();
     let mut entities = Box::pin(Entity::list_desc(&db).await?);
-    let mut entities_pb = api::Entities::default();
     while let Some(entity) = entities.next().await.transpose()? {
-        entities_pb.add(api::Entity::try_from(entity)?);
+        html_thumbnails.push(format!(
+            r#"<div class="media-thumbnail"><img src="/media/{}"></div>"#,
+            &entity
+                .thumbnail_path
+                .to_str()
+                .ok_or(anyhow!("Invalid character in path"))?
+        ));
     }
-    let mut buf_mut = Vec::new();
-    entities_pb.encode(&mut buf_mut)?;
 
-    Ok(HttpResponse::Ok()
-        .content_type("application/protobuf")
-        .body(buf_mut))
+    let content = format!(
+        r#"<!DOCTYPE html>
+        <html>
+        <head>
+            <title>Backlog</title>
+            <link rel="stylesheet" href="/static/stylesheet.css">
+        </head>
+        <body>
+            <div class="content">
+                <header>
+                    <nav>
+                        <a class="active" href="/">Media</a>
+                        <a href="/">Tags</a>
+                    </nav>
+                    <div class="search-bar">
+                        <input type="text" name="search">
+                    </div>
+                </header>
+                <div class="media-thumbnail-list">{}</div>
+            </div>
+         </body>
+         </html>
+        "#,
+        html_thumbnails.join("\n")
+    );
+    Ok(HttpResponse::Ok().content_type("text/html").body(content))
 }
 
 async fn run_server(config: Config) -> Result<()> {
@@ -92,10 +116,10 @@ async fn run_server(config: Config) -> Result<()> {
         App::new()
             .app_data(config.clone())
             .data_factory(move || get_db(get_db_config.clone()))
-            .route("/list", web::get().to(list_from_database))
+            .route("/", web::get().to(list_from_database))
             .route("/media/{media:.*}", web::get().to(show_media))
             .route("/static/stylesheet.css", web::get().to(static_css))
-            .route("/", web::get().to(static_html))
+            .route("/static/index.html", web::get().to(static_html))
             .route("/static/index.js", web::get().to(static_js))
     })
     .bind("127.0.0.1:5000")?
