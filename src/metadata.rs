@@ -1,9 +1,13 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
 use exif::{In, Reader, Tag, Value};
 use fraction::prelude::Fraction;
 use image::GenericImageView;
+use serde_json::{json, Value as serdeValue};
+use std::convert::TryInto;
 use std::fs;
+use std::path::Path;
+use std::process::Command;
 
 use crate::coord::Location;
 
@@ -17,6 +21,99 @@ pub struct Metadata {
     iso: Option<u32>,
     flash: Option<bool>,
     gps_location: Option<Location>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Rotate {
+    Keep,
+    Cw90,
+    Ccw90,
+    Cw180,
+}
+
+pub struct VideoMetadata {
+    pub width: u32,
+    pub height: u32,
+    pub duration: f32,
+    pub rotation: Rotate,
+}
+
+fn json_as_u64(json: &serde_json::Map<String, serdeValue>, key: &str) -> Result<u64> {
+    Ok(json.get(key).map(|x| x.as_u64()).flatten().ok_or(anyhow!(
+        "Key {} does not exist, or it is not an integer",
+        key
+    ))?)
+}
+
+fn json_as_object<'a>(
+    json: &'a serde_json::Map<String, serdeValue>,
+    key: &str,
+) -> Result<&'a serde_json::Map<String, serdeValue>> {
+    Ok(json
+        .get(key)
+        .map(|x| x.as_object())
+        .flatten()
+        .ok_or(anyhow!(
+            "Key {} does not exist, or it is not an Object",
+            key
+        ))?)
+}
+
+impl VideoMetadata {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let file_name = path.as_ref().as_os_str();
+        let proc = Command::new("ffprobe")
+            .args(&["-v", "quiet"])
+            .args(&["-print_format", "json"])
+            .args(&["-show_format"])
+            .args(&["-show_streams"])
+            .arg(file_name)
+            .output()?;
+
+        let json_output: serdeValue = serde_json::from_str(std::str::from_utf8(&proc.stdout)?)?;
+        println!("{:#?}", json_output);
+        let raw_metadata = json_output
+            .as_object()
+            .ok_or(anyhow!("Not a JSON object"))?;
+
+        let format = json_as_object(&raw_metadata, "format")?;
+        let duration = format
+            .get("duration")
+            .ok_or(anyhow!("Missing duration"))?
+            .as_str()
+            .ok_or(anyhow!("Duration not string"))?
+            .parse::<f32>()?;
+
+        let streams = raw_metadata
+            .get("streams")
+            .ok_or(anyhow!("No streams detected"))?
+            .as_array()
+            .ok_or(anyhow!("Not an array"))?;
+        for stream in streams {
+            let stream = stream.as_object().ok_or(anyhow!("Not a JSON object"))?;
+            if stream.get("codec_type") != Some(&json!("video")) {
+                continue;
+            }
+            let width = json_as_u64(&stream, "width")?.try_into()?;
+            let height = json_as_u64(&stream, "height")?.try_into()?;
+
+            let rotate = json_as_object(&stream, "tags")?.get("rotate");
+            let rotation = match rotate.map(|r| r.as_str()).flatten() {
+                Some("90") => Rotate::Cw90,
+                Some("180") => Rotate::Cw180,
+                Some("270") => Rotate::Ccw90,
+                _ => Rotate::Keep,
+            };
+            return Ok(Self {
+                duration,
+                width,
+                height,
+                rotation,
+            });
+        }
+
+        Err(anyhow!("Unable to detect video stream")).into()
+    }
 }
 
 fn field_as_string(reader: &Reader, tag: Tag) -> Option<String> {
