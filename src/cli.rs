@@ -40,7 +40,7 @@ pub enum SubCmdTag {
 
         /// ID of parent tag. If not provided the tag is considered a top level tag
         #[structopt(short = "p", long = "parent")]
-        parent: Option<i32>,
+        parent: Option<String>,
     },
 
     /// List all present tags and their relation

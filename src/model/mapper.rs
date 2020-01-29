@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use futures::{Stream, StreamExt};
 use regex::Regex;
@@ -131,9 +132,18 @@ impl Tag {
         client: &Client,
         name: &str,
         tag_type: &str,
-        parent: Option<i32>,
+        parent: Option<String>,
     ) -> Result<Self> {
         let tag = TagType::try_from(tag_type)?;
+        let pid = match parent {
+            None => None,
+            Some(parent) => Some(
+                Tag::get_from_canonical_name(client, parent.as_str())
+                    .await
+                    .ok_or(anyhow!("Parent {} does not exist", parent))?
+                    .id,
+            ),
+        };
         Ok(Self::from_row(
             &client
                 .query_one(
@@ -146,7 +156,7 @@ impl Tag {
                         Self::COLS.join(", "),
                     )
                     .as_str(),
-                    &[&parent, &Self::canonical_name(&name)?, &name, &tag],
+                    &[&pid, &Self::canonical_name(&name)?, &name, &tag],
                 )
                 .await?,
         )?)
