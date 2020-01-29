@@ -37,5 +37,11 @@ This will create a database superuser (-s) which can create new databases (-d) a
 ```
 npm install
 ```
+To generate protobuf files:(path/to/protoc/protoc.exe --js_out=import_style=commonjs,binary:. src/entity.proto
+
 To compile javascript code:
-npm run parcel watch src/index.jsx
+sudo npm install -g yarn
+
+sudo npm install -g parcel-bundler
+
+parcel watch src/index.jsx

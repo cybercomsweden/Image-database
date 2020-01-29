@@ -1,19 +1,53 @@
+import api from './entity_pb.js';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-class Media extends React.Component {
-    render() {
-        let jsonObj = '{ "media": [ {"path": "1_resized.jpg"},{"path": "2_resized.jpg"},{"path": "3_resized.jpg"},{"path": "4_resized.jpg"}]}';
-        let obj = JSON.parse(jsonObj);
-        console.log(obj);
-        const media = [];
-        for (let entity of obj.media) {
-            let path = `/media/dest/${entity.path}`;
-            media.push(<div class="media-thumbnail"><img src={path}/></div>)
+function getThumbnailPaths() {
+    const response = fetch("/list").then((response) => {
+        return response.blob();
+    }).then((blob) => {
+        return blob.arrayBuffer();
+    }).then((buf) => {
+        const thumbnailPaths = [];
+        for (let entity of api.Entities.deserializeBinary(buf).getEntityList()) {
+            thumbnailPaths.push(entity.getThumbnailPath());
         }
+
+        return thumbnailPaths;
+    });
+    return response;
+}
+
+class Media extends React.Component {
+    constructor(props) {
+        super(props)
+        this.state = {
+            media: []
+        };
+    }
+
+    getThumbnails() {
+        getThumbnailPaths().then((paths) => {
+            const thumbnails = [];
+            var id = 0;
+            for (let p of paths) {
+                let path = `/media/${p.replace(/\\/, "/")}`;
+                thumbnails.push(<div key={id} className="media-thumbnail"><img src={path}/></div>);
+                id = id + 1;
+            }
+
+            this.setState({ media: thumbnails });
+        });
+    }
+
+    componentDidMount() {
+        this.getThumbnails();
+    }
+
+    render() {
         return (
             <div className="media-thumbnail-list">
-            {media}
+            {this.state.media}
             </div>
         );
     }
