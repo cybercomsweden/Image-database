@@ -201,7 +201,8 @@ async fn main() -> Result<()> {
             tag_type,
             parent,
         }) => {
-            println!("{:#?}",
+            println!(
+                "{:#?}",
                 Tag::insert(
                     &get_db(config).await?,
                     name.as_str(),
