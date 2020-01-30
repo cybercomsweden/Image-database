@@ -179,7 +179,7 @@ fn calc_new_measurements(img: &image::DynamicImage, bbox: Bbox) -> (u32, u32, u3
         return (0, 0, width, height);
     } else if aspect_ratio as f32 > 1.5 {
         let new_width = (height as f32 * 1.5).ceil() as u32;
-        let diff = (x_mid - new_width / 2) as i32;
+        let diff = x_mid as i32 - new_width as i32 / 2;
         if diff >= 0 {
             return (diff as u32, 0, new_width, height);
         } else {
@@ -187,7 +187,7 @@ fn calc_new_measurements(img: &image::DynamicImage, bbox: Bbox) -> (u32, u32, u3
         }
     } else {
         let new_height = (width as f32 / 1.5).ceil() as u32;
-        let diff = (y_mid - new_height / 2) as i32;
+        let diff = y_mid as i32 - new_height as i32 / 2;
         if diff >= 0 {
             return (0, diff as u32, width, new_height);
         } else {
