@@ -1,5 +1,6 @@
 use anyhow::anyhow;
-use postgres_types::{FromSql, Kind, ToSql, Type};
+use bytes::{BufMut, BytesMut};
+use postgres_types::{to_sql_checked, FromSql, IsNull, Kind, ToSql, Type};
 use std::convert::TryFrom;
 use std::error::Error as ErrorTrait;
 
@@ -30,6 +31,37 @@ pub enum TagType {
 
     #[postgres(name = "other")]
     Other,
+}
+
+impl ToSql for Location {
+    fn to_sql(
+        &self,
+        _ty: &Type,
+        out: &mut BytesMut,
+    ) -> std::result::Result<IsNull, Box<dyn ErrorTrait + 'static + Sync + Send>> {
+        // Little endian
+        out.put_u8(0x01);
+
+        // Point with SRID
+        out.put_u8(0x01);
+        out.put_u8(0x00);
+        out.put_u8(0x00);
+        out.put_u8(0x20);
+
+        // SRID
+        out.extend(&4326u32.to_le_bytes());
+
+        out.extend(&self.longitude.to_le_bytes());
+        out.extend(&self.latitude.to_le_bytes());
+
+        Ok(IsNull::No)
+    }
+
+    fn accepts(ty: &Type) -> bool {
+        ty.kind() == &Kind::Simple && ty.name() == "geography"
+    }
+
+    to_sql_checked!();
 }
 
 impl<'a> FromSql<'a> for Location {

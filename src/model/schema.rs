@@ -28,6 +28,8 @@ pub async fn create_schema(client: &Client) -> Result<()> {
                     path varchar NOT NULL,
                     thumbnail_path varchar NOT NULL,
                     preview_path varchar NOT NULL,
+                    size int8 NOT NULL,
+                    sha3 bytea NOT NULL,
                     uploaded timestamp with time zone NOT NULL DEFAULT current_timestamp,
                     created timestamp with time zone,
                     location geography(point)

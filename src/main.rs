@@ -1,15 +1,18 @@
 use actix_files::NamedFile;
 use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
+use async_std::fs::File as AsyncFile;
+use async_std::io::ReadExt;
 use futures::{FutureExt, StreamExt};
 use prost::Message;
+use sha3::digest::Digest;
 use std::convert::TryFrom;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
 use walkdir::WalkDir;
 
-mod cli;
 mod api;
+mod cli;
 mod config;
 mod coord;
 mod error;
@@ -23,7 +26,7 @@ use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
 use crate::metadata::extract_metadata;
-use crate::model::{create_schema, Entity, Tag};
+use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::tags::{list_tags, search_tag, tag_image};
 use crate::thumbnail::{copy_and_create_thumbnail, media_type_from_path};
 
@@ -104,6 +107,21 @@ async fn run_server(config: Config) -> Result<()> {
     .await?)
 }
 
+async fn sha3_256_file<P: AsRef<Path>>(path: P) -> Result<[u8; 32]> {
+    let mut file = AsyncFile::open(path.as_ref().to_owned()).await?;
+    let mut buf = [0u8; 4096]; // Use 4096 as the buffer size
+    let mut hasher = sha3::Sha3_256::new();
+    loop {
+        let buf_len = file.read(&mut buf).await?;
+        if buf_len == 0 {
+            break;
+        }
+        hasher.input(&buf[..buf_len]);
+    }
+
+    Ok(hasher.result().into())
+}
+
 async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<()> {
     for path in src_dirs
         .iter()
@@ -116,6 +134,14 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             continue;
         }
 
+        let metadata = match path.metadata() {
+            Ok(m) => m,
+            Err(err) => {
+                println!("Failed to stat file: {}", err);
+                continue;
+            }
+        };
+
         println!("Making thumbnail for {:?}", &path);
         let (img, thumbnail) = match copy_and_create_thumbnail(&path) {
             Ok((i, t)) => (i, t),
@@ -125,21 +151,21 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             }
         };
 
-        client
-            .execute(
-                "
-            INSERT INTO entity(media_type, path, thumbnail_path, preview_path)
-            VALUES('image', $1, $2, '')
-        ",
-                &[
-                    &img.to_str()
-                        .ok_or(anyhow!("Invalid path to copied original"))?,
-                    &thumbnail
-                        .to_str()
-                        .ok_or(anyhow!("Invalid thumbnail path"))?,
-                ],
-            )
-            .await?;
+        let sha3 = sha3_256_file(&path).await?;
+
+        let entity = Entity::insert(
+            &client,
+            EntityType::Image,
+            &img,
+            &thumbnail,
+            "",
+            metadata.len(),
+            &sha3,
+            &None,
+            &None,
+        )
+        .await?;
+        dbg!(entity);
     }
     Ok(())
 }

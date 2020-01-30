@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use futures::{Stream, StreamExt};
 use regex::Regex;
 use std::borrow::Borrow;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use std::path::{Path, PathBuf};
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{Client, Row};
@@ -20,6 +20,8 @@ pub struct Entity {
     pub thumbnail_path: PathBuf,
     pub preview_path: PathBuf,
     pub uploaded: DateTime<Utc>,
+    pub size: u64,
+    pub sha3: [u8; 32],
     pub created: Option<DateTime<Utc>>,
     pub location: Option<Location>,
 }
@@ -40,16 +42,88 @@ pub struct TagToEntity {
 }
 
 impl Entity {
-    pub const COLS: [&'static str; 8] = [
+    pub const COLS: [&'static str; 10] = [
         "id",
         "media_type",
         "path",
         "thumbnail_path",
         "preview_path",
+        "size",
+        "sha3",
         "uploaded",
         "created",
         "location",
     ];
+
+    pub async fn insert<P1, P2, P3>(
+        client: &Client,
+        media_type: EntityType,
+        path: P1,
+        thumbnail_path: P2,
+        preview_path: P3,
+        size: u64,
+        sha3: &[u8; 32],
+        created: &Option<DateTime<Utc>>,
+        location: &Option<Location>,
+    ) -> Result<Self>
+    where
+        P1: AsRef<Path>,
+        P2: AsRef<Path>,
+        P3: AsRef<Path>,
+    {
+        Ok(Self::from_row(
+            &client
+                .query_one(
+                    format!(
+                        "
+                    INSERT INTO entity(
+                        media_type,
+                        path,
+                        thumbnail_path,
+                        preview_path,
+                        size,
+                        sha3,
+                        created,
+                        location
+                    )
+                    VALUES(
+                        $1,
+                        $2,
+                        $3,
+                        $4,
+                        $5,
+                        $6,
+                        $7,
+                        $8
+                    )
+                    RETURNING {}
+                ",
+                        Self::COLS.join(", "),
+                    )
+                    .as_str(),
+                    &[
+                        &media_type,
+                        &path
+                            .as_ref()
+                            .to_str()
+                            .ok_or(anyhow!("Media path contains non UTF-8 characters"))?,
+                        &thumbnail_path
+                            .as_ref()
+                            .to_str()
+                            .ok_or(anyhow!("Thumbnial path contains non UTF-8 characters"))?,
+                        &preview_path
+                            .as_ref()
+                            .to_str()
+                            .ok_or(anyhow!("Preview path contains non UTF-8 characters"))?,
+                        &i64::try_from(size)?,
+                        &sha3.as_ref(),
+                        &created,
+                        &location,
+                    ],
+                )
+                .await?,
+        )?)
+    }
 
     pub fn from_row(row: &Row) -> Result<Self> {
         Ok(Self {
@@ -58,9 +132,11 @@ impl Entity {
             path: Path::new(row.try_get::<_, &str>(2)?).to_path_buf(),
             thumbnail_path: Path::new(row.try_get::<_, &str>(3)?).to_path_buf(),
             preview_path: Path::new(row.try_get::<_, &str>(4)?).to_path_buf(),
-            uploaded: row.try_get::<_, DateTime<Utc>>(5)?,
-            created: row.try_get::<_, Option<DateTime<Utc>>>(6)?,
-            location: row.try_get::<_, Option<Location>>(7)?,
+            size: row.try_get::<_, i64>(5)?.try_into()?,
+            sha3: row.try_get::<_, &[u8]>(6)?.try_into()?,
+            uploaded: row.try_get::<_, DateTime<Utc>>(7)?,
+            created: row.try_get::<_, Option<DateTime<Utc>>>(8)?,
+            location: row.try_get::<_, Option<Location>>(9)?,
         })
     }
 
