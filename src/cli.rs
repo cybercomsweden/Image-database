@@ -9,7 +9,7 @@ pub enum Cmd {
     /// Import supported media recursively from the given folder
     Import {
         /// One or more files or directories to import
-        #[structopt(parse(from_os_str))]
+        #[structopt(parse(from_os_str), required = true)]
         paths: Vec<PathBuf>,
     },
 

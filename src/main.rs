@@ -182,9 +182,6 @@ async fn main() -> Result<()> {
             run_server(config).await?;
         }
         Cmd::Import { paths } => {
-            if paths.len() == 0 {
-                Err(anyhow!("Expected at least one path"))?;
-            }
             populate_database(&get_db(config).await?, &paths).await?;
         }
         Cmd::InitDb => {
