@@ -1,5 +1,5 @@
 use actix_files::NamedFile;
-use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{middleware::Logger, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
 use async_std::fs::File as AsyncFile;
 use async_std::io::ReadExt;
@@ -39,14 +39,13 @@ async fn get_db(config: Config) -> Result<DbConn> {
 
     // Create a client that we use to query the database and a connection that
     // we use to wake up the futures when we query the database
-    let res = PostgresConfig::new()
+    let (client, conn) = PostgresConfig::new()
         .host(&config.database.host)
         .port(config.database.port)
         .user(&config.database.user)
         .dbname(&config.database.dbname)
         .connect(NoTls)
-        .await;
-    let (client, conn) = res?;
+        .await?;
 
     // We must provide the event loop with our connection, or our query futures
     // will never resolve
@@ -94,6 +93,7 @@ async fn run_server(config: Config) -> Result<()> {
         let get_db_config = config.clone();
 
         App::new()
+            .wrap(Logger::default())
             .app_data(config.clone())
             .data_factory(move || get_db(get_db_config.clone()))
             .route("/list", web::get().to(list_from_database))
@@ -178,6 +178,8 @@ async fn main() -> Result<()> {
     } else {
         Config::default()
     };
+
+    env_logger::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     match args.cmd.unwrap_or(Cmd::Run) {
         Cmd::Run => {
