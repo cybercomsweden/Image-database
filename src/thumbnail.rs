@@ -20,7 +20,6 @@ pub enum MediaType {
 pub enum FileType {
     Mp4,
     Mov,
-    Jpg,
     Jpeg,
     Png,
     Cr2,
@@ -31,7 +30,7 @@ impl FileType {
     pub fn media_type(&self) -> MediaType {
         match self {
             FileType::Mp4 | FileType::Mov => MediaType::Video,
-            FileType::Jpg | FileType::Jpeg | FileType::Png => MediaType::Image,
+            FileType::Jpeg | FileType::Png => MediaType::Image,
             FileType::Cr2 | FileType::Nef => MediaType::RawImage,
         }
     }
@@ -107,8 +106,7 @@ fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
 pub fn file_type_from_path<P: AsRef<Path>>(path: P) -> Option<FileType> {
     let ext = path.as_ref().extension()?.to_str()?;
     match ext.to_ascii_lowercase().as_str() {
-        "jpg" => Some(FileType::Jpg),
-        "jpeg" => Some(FileType::Jpeg),
+        "jpg" | "jpeg" => Some(FileType::Jpeg),
         "png" => Some(FileType::Png),
         "cr2" => Some(FileType::Cr2),
         "nef" => Some(FileType::Nef),
