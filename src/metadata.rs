@@ -43,12 +43,6 @@ pub struct VideoMetadata {
     pub gps_location: Option<Location>,
 }
 
-#[derive(Clone, Debug)]
-pub struct VideoFormat {
-    pub mp4: String,
-    pub mov: String,
-}
-
 fn json_as_u64(json: &serde_json::Map<String, serdeValue>, key: &str) -> Result<u64> {
     Ok(json.get(key).map(|x| x.as_u64()).flatten().ok_or(anyhow!(
         "Key {} does not exist, or it is not an integer",
@@ -287,6 +281,5 @@ pub fn extract_metadata_image<P: AsRef<std::path::Path>>(path: P) -> Result<Meta
 }
 
 pub fn extract_metadata_video<P: AsRef<std::path::Path>>(path: P) -> Result<VideoMetadata> {
-    //let file = fs::File::open(path.as_ref())?;
     VideoMetadata::from_file(path)
 }

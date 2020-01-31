@@ -16,6 +16,27 @@ pub enum MediaType {
     Video,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FileType {
+    Mp4,
+    Mov,
+    Jpg,
+    Jpeg,
+    Png,
+    Cr2,
+    Nef,
+}
+
+impl FileType {
+    pub fn media_type(&self) -> MediaType {
+        match self {
+            FileType::Mp4 | FileType::Mov => MediaType::Video,
+            FileType::Jpg | FileType::Jpeg | FileType::Png => MediaType::Image,
+            FileType::Cr2 | FileType::Nef => MediaType::RawImage,
+        }
+    }
+}
+
 fn add_suffix<T: AsRef<str>, U: AsRef<str>>(
     img_path: &std::path::Path,
     suffix: T,
@@ -83,12 +104,16 @@ fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
     Ok(DynamicImage::ImageRgb8(buf))
 }
 
-pub fn media_type_from_path<P: AsRef<Path>>(path: P) -> Option<MediaType> {
+pub fn file_type_from_path<P: AsRef<Path>>(path: P) -> Option<FileType> {
     let ext = path.as_ref().extension()?.to_str()?;
     match ext.to_ascii_lowercase().as_str() {
-        "jpg" | "jpeg" | "png" => Some(MediaType::Image),
-        "cr2" | "nef" => Some(MediaType::RawImage),
-        "mov" | "mp4" => Some(MediaType::Video),
+        "jpg" => Some(FileType::Jpg),
+        "jpeg" => Some(FileType::Jpeg),
+        "png" => Some(FileType::Png),
+        "cr2" => Some(FileType::Cr2),
+        "nef" => Some(FileType::Nef),
+        "mov" => Some(FileType::Mov),
+        "mp4" => Some(FileType::Mp4),
         _ => None,
     }
 }
@@ -105,18 +130,20 @@ pub fn open_raw_image<P: AsRef<Path>>(path: P) -> Result<DynamicImage> {
 }
 
 pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, PathBuf)> {
-    let (img, rotation) =
-        match media_type_from_path(path.as_ref()).ok_or(anyhow!("Unknown file type"))? {
-            MediaType::Image => (
-                image::open(path.as_ref()).context("failed to open image")?,
-                find_orientation(path.as_ref()).unwrap_or(Rotate::Zero),
-            ),
-            MediaType::RawImage => (
-                open_raw_image(path.as_ref()).context("failed to open raw image")?,
-                Rotate::Zero,
-            ),
-            MediaType::Video => (get_video_snapshot(path.as_ref())?, Rotate::Zero),
-        };
+    let (img, rotation) = match file_type_from_path(path.as_ref())
+        .ok_or(anyhow!("Unknown file type"))?
+        .media_type()
+    {
+        MediaType::Image => (
+            image::open(path.as_ref()).context("failed to open image")?,
+            find_orientation(path.as_ref()).unwrap_or(Rotate::Zero),
+        ),
+        MediaType::RawImage => (
+            open_raw_image(path.as_ref()).context("failed to open raw image")?,
+            Rotate::Zero,
+        ),
+        MediaType::Video => (get_video_snapshot(path.as_ref())?, Rotate::Zero),
+    };
 
     let file_name = path.as_ref().file_stem().unwrap();
 

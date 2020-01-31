@@ -25,10 +25,10 @@ mod thumbnail;
 use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
-use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::metadata::{extract_metadata_image, extract_metadata_video};
+use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::tags::{list_tags, search_tag, tag_image};
-use crate::thumbnail::{copy_and_create_thumbnail, media_type_from_path, MediaType};
+use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, FileType, MediaType};
 
 type DbConn = Client;
 
@@ -129,7 +129,7 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
         .flatten()
     {
         let path = path?.into_path();
-        if media_type_from_path(&path).is_none() {
+        if file_type_from_path(&path).is_none() {
             println!("Ignoring {:?}", path);
             continue;
         }
@@ -190,13 +190,21 @@ async fn main() -> Result<()> {
             create_schema(&get_db(config).await?).await?;
         }
         Cmd::Metadata { path } => {
-            match media_type_from_path(&path).ok_or(anyhow!("Unknown file type"))? {
-                MediaType::Image => (println!("{:#?}", extract_metadata_image(&path)?),),
-                MediaType::RawImage => (println!(
-                    "Showing metadata for raw images is not supported yet"
-                ),),
-                MediaType::Video => (println!("{:#?}", extract_metadata_video(&path)?),),
-            };
+            let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
+            if file_type.media_type() == MediaType::Image {
+                println!("{:#?}", extract_metadata_image(&path)?);
+            } else if file_type.media_type() == MediaType::RawImage {
+                println!("Showing metadata for raw images is not supported yet");
+            } else {
+                if file_type == FileType::Mp4 {
+                    println!("{:#?}", extract_metadata_video(&path)?);
+                } else {
+                    println!(
+                        "Showing metadata not supported for video format {:#?}",
+                        file_type
+                    );
+                }
+            }
         }
         Cmd::Search { tag } => {
             println!("{:#?}", search_tag(&get_db(config).await?, tag).await?);
