@@ -32,7 +32,8 @@ pub async fn create_schema(client: &Client) -> Result<()> {
                     sha3 bytea NOT NULL,
                     uploaded timestamp with time zone NOT NULL DEFAULT current_timestamp,
                     created timestamp with time zone,
-                    location geography(point)
+                    location geography(point),
+                    unique (sha3)
                 )
             ",
             &[],

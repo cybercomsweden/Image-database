@@ -168,6 +168,22 @@ impl Entity {
         Self::from_row(&row).ok()
     }
 
+    pub async fn get_from_sha3(client: &Client, sha3: &[u8; 32]) -> Option<Self> {
+        let row = client
+            .query_opt(
+                format!(
+                    "SELECT {} FROM entity WHERE sha3 = $1",
+                    Self::COLS.join(", ")
+                )
+                .as_str(),
+                &[&sha3.as_ref()],
+            )
+            .await
+            .ok()
+            .flatten()?;
+        Self::from_row(&row).ok()
+    }
+
     pub async fn list_desc(client: &Client) -> Result<impl Stream<Item = Result<Self>>> {
         Ok(client
             .query_raw(

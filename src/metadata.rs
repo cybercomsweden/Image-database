@@ -138,8 +138,8 @@ impl VideoMetadata {
             if stream.get("codec_type") != Some(&json!("video")) {
                 continue;
             }
-            let width = json_as_u64(&stream, "coded_width")?.try_into()?;
-            let height = json_as_u64(&stream, "coded_height")?.try_into()?;
+            let width = json_as_u64(&stream, "width")?.try_into()?;
+            let height = json_as_u64(&stream, "height")?.try_into()?;
 
             let rotation = json_as_object(&stream, "tags")?
                 .get("rotate")

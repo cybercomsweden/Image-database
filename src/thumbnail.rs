@@ -89,7 +89,7 @@ fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
         .args(&["-vcodec", "rawvideo"])
         .arg("-") // Output to stdout
         .output()
-        .context("failed to extract thumpnail")?;
+        .context("failed to extract thumbnail")?;
 
     let (height, width) = if metadata.rotation == Some(Rotate::Zero)
         || metadata.rotation == Some(Rotate::Cw180)
@@ -100,7 +100,7 @@ fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
         (metadata.width, metadata.height)
     };
     let buf = ImageBuffer::from_raw(width, height, proc.stdout)
-        .ok_or(anyhow!("Failed to convert raw to image"))?;
+        .ok_or(anyhow!("Failed to convert video frame to image"))?;
     Ok(DynamicImage::ImageRgb8(buf))
 }
 

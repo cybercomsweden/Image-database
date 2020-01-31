@@ -142,6 +142,13 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             }
         };
 
+        // Calculate SHA-3 to see if the file is already imported
+        let sha3 = sha3_256_file(&path).await?;
+        if let Some(e) = Entity::get_from_sha3(&client, &sha3).await {
+            println!("{:?} is already imported (id {})", path, e.id);
+            continue;
+        }
+
         println!("Making thumbnail for {:?}", &path);
         let (img, thumbnail) = match copy_and_create_thumbnail(&path) {
             Ok((i, t)) => (i, t),
@@ -150,8 +157,6 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
                 continue;
             }
         };
-
-        let sha3 = sha3_256_file(&path).await?;
 
         let entity = Entity::insert(
             &client,
