@@ -28,7 +28,7 @@ use crate::error::Result;
 use crate::metadata::{extract_metadata_image, extract_metadata_video};
 use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::tags::{list_tags, search_tag, tag_image};
-use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, FileType, MediaType};
+use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, MediaType};
 
 type DbConn = Client;
 
@@ -203,14 +203,7 @@ async fn main() -> Result<()> {
             } else if file_type.media_type() == MediaType::RawImage {
                 println!("Showing metadata for raw images is not supported yet");
             } else {
-                if file_type == FileType::Mp4 {
-                    println!("{:#?}", extract_metadata_video(&path)?);
-                } else {
-                    println!(
-                        "Showing metadata not supported for video format {:#?}",
-                        file_type
-                    );
-                }
+                println!("{:#?}", extract_metadata_video(&path)?);
             }
         }
         Cmd::Search { tag } => {

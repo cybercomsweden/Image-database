@@ -83,7 +83,7 @@ fn map_rotation(rot: &str) -> Result<Rotate> {
 }
 
 // the gps format is +58.3938+015.5612/
-fn gps_mp4(coord: &str) -> Result<Location> {
+fn gps_video(coord: &str) -> Result<Location> {
     let coord = coord.replace("/", "");
     let split: Vec<String> = coord.split("+").map(|s| s.to_string()).collect();
     let lat = split[1].parse::<f64>()?;
@@ -125,10 +125,16 @@ impl VideoMetadata {
             .and_then(|l| l.as_str())
             .and_then(|r| r.parse::<f32>().ok());
 
-        let gps_location = tags
-            .get("location")
+        let gps_string = if let Some(gps_string) = tags.get("location") {
+            Some(gps_string)
+        } else if let Some(gps_string) = tags.get("com.apple.quicktime.location.ISO6709") {
+            Some(gps_string)
+        } else {
+            None
+        };
+        let gps_location = gps_string
             .and_then(|l| l.as_str())
-            .and_then(|r| gps_mp4(r).ok());
+            .and_then(|r| gps_video(r).ok());
 
         let streams = get_leaf_value(&raw_metadata, "streams")?
             .as_array()
@@ -145,7 +151,6 @@ impl VideoMetadata {
                 .get("rotate")
                 .and_then(|rot| rot.as_str())
                 .and_then(|r| map_rotation(r).ok());
-            println!("rotation {:?}", rotation);
             return Ok(Self {
                 duration,
                 width,
