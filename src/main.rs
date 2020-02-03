@@ -25,10 +25,10 @@ mod thumbnail;
 use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
-use crate::metadata::{extract_metadata_image, extract_metadata_video};
+use crate::metadata::{extract_metadata_image_jpg, extract_metadata_video};
 use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::tags::{list_tags, search_tag, tag_image};
-use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, MediaType};
+use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, FileType, MediaType};
 
 type DbConn = Client;
 
@@ -203,11 +203,13 @@ async fn main() -> Result<()> {
         }
         Cmd::Metadata { path } => {
             let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
-            if file_type.media_type() == MediaType::Image {
-                println!("{:#?}", extract_metadata_image(&path)?);
+            if file_type == FileType::Png {
+                println!("Cannot show metadata for PNG images");
+            } else if file_type == FileType::Jpeg {
+                println!("{:#?}", extract_metadata_image_jpg(&path)?);
             } else if file_type.media_type() == MediaType::RawImage {
                 println!("Showing metadata for raw images is not supported yet");
-            } else {
+            } else if file_type.media_type() == MediaType::Video {
                 println!("{:#?}", extract_metadata_video(&path)?);
             }
         }

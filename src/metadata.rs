@@ -16,7 +16,7 @@ use crate::coord::Location;
 pub struct Metadata {
     width: u32,
     height: u32,
-    date_time: Option<NaiveDateTime>, // Should be DateTime, not naive
+    date_time: Option<NaiveDateTime>,
     exposure_time: Option<Fraction>,
     aperture: Option<f32>,
     iso: Option<u32>,
@@ -258,7 +258,7 @@ fn gps_image(reader: &Reader) -> Option<Location> {
     }
 }
 
-pub fn extract_metadata_image<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
+pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
     let file = fs::File::open(path.as_ref())?;
     let reader = Reader::new(&mut std::io::BufReader::new(&file))?;
 
