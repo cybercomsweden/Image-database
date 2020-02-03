@@ -72,6 +72,10 @@ async fn static_css() -> Result<NamedFile> {
     Ok(NamedFile::open("src/stylesheet.css")?)
 }
 
+async fn js_map() -> Result<NamedFile> {
+    Ok(NamedFile::open("dist/index.js.map")?)
+}
+
 async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
     let mut entities = Box::pin(Entity::list_desc(&db).await?);
     let mut entities_pb = api::Entities::default();
@@ -100,6 +104,7 @@ async fn run_server(config: Config) -> Result<()> {
             .route("/media/{media:.*}", web::get().to(show_media))
             .route("/static/stylesheet.css", web::get().to(static_css))
             .route("/", web::get().to(static_html))
+            .route("/index.js.map", web::get().to(js_map))
             .route("/static/index.js", web::get().to(static_js))
     })
     .bind("127.0.0.1:5000")?
