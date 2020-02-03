@@ -128,13 +128,15 @@ pub fn open_raw_image<P: AsRef<Path>>(path: P) -> Result<DynamicImage> {
 }
 
 pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, PathBuf)> {
-    let (img, rotation) = match file_type_from_path(path.as_ref())
-        .ok_or(anyhow!("Unknown file type"))?
-        .media_type()
-    {
+    let file_type = file_type_from_path(path.as_ref()).ok_or(anyhow!("Unknown file type"))?;
+    let (img, rotation) = match file_type.media_type() {
         MediaType::Image => (
             image::open(path.as_ref()).context("failed to open image")?,
-            find_orientation(path.as_ref()).unwrap_or(Rotate::Zero),
+            if file_type == FileType::Jpeg {
+                find_orientation(path.as_ref()).unwrap_or(Rotate::Zero)
+            } else {
+                Rotate::Zero
+            },
         ),
         MediaType::RawImage => (
             open_raw_image(path.as_ref()).context("failed to open raw image")?,
