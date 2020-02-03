@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use rgeo::search;
 use std::convert::TryInto;
 use std::fmt;
 
@@ -15,13 +16,15 @@ fn to_dec_degrees(value: f64) -> (isize, isize, isize) {
 pub struct Location {
     pub latitude: f64,
     pub longitude: f64,
+    pub place: String,
 }
 
 impl Location {
-    pub fn new(latitude: f64, longitude: f64) -> Self {
+    pub fn new(latitude: f64, longitude: f64, place: String) -> Self {
         Self {
             latitude,
             longitude,
+            place,
         }
     }
 
@@ -35,7 +38,8 @@ impl Location {
     ) -> Self {
         let lat = lat_d + lat_m / 60.0 + lat_s / 3600.0;
         let lon = lon_d + lon_m / 60.0 + lon_s / 3600.0;
-        Self::new(lat, lon)
+        let place = Self::reverse_geolocation(lat, lon);
+        Self::new(lat, lon, place)
     }
 
     pub fn from_postgis_ewkb(raw: &[u8]) -> Result<Self> {
@@ -62,10 +66,17 @@ impl Location {
         let longitude = f64::from_le_bytes(raw[9..17].try_into()?);
         let latitude = f64::from_le_bytes(raw[17..25].try_into()?);
 
+        let place = Self::reverse_geolocation(latitude, longitude);
         Ok(Location {
             latitude,
             longitude,
+            place,
         })
+    }
+
+    pub fn reverse_geolocation(lat: f64, lon: f64) -> String {
+        let (_, record) = search(lat as f32, lon as f32).unwrap();
+        format!("{}, {}", record.name, record.country)
     }
 }
 

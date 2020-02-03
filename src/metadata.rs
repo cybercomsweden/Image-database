@@ -88,7 +88,8 @@ fn gps_video(coord: &str) -> Result<Location> {
     let split: Vec<String> = coord.split("+").map(|s| s.to_string()).collect();
     let lat = split[1].parse::<f64>()?;
     let lon = split[2].parse::<f64>()?;
-    Ok(Location::new(lat, lon))
+    let place = Location::reverse_geolocation(lat, lon);
+    Ok(Location::new(lat, lon, place))
 }
 
 impl VideoMetadata {
