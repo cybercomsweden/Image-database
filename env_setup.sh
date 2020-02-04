@@ -32,7 +32,7 @@ case "$ID" in
         ;;
     ubuntu)
         apt-get update
-        apt-get install -y postgresql postgis ffmpeg pkg-config libssl-dev npm protobuf-compiler libprotobuf-dev
+        apt-get install -y postgresql postgis ffmpeg pkg-config npm protobuf-compiler libprotobuf-dev nodejs-dev node-gyp libssl1.0-dev
         service postgresql start
         ;;
     *)
