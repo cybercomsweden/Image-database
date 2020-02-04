@@ -15,8 +15,9 @@ fn list_children(hm: &HashMap<Option<i32>, Vec<Tag>>, pid: i32, mut tree: Vec<St
         return;
     }
     for child in children.unwrap() {
-        tree.push(child.canonical_name.clone());
-        list_children(&hm, child.id, tree.clone());
+        let new_tree = tree.clone();
+        new_tree.push(child.canonical_name.clone());
+        list_children(&hm, child.id, new_tree);
     }
 }
 
