@@ -2,49 +2,20 @@ import Pbf from 'pbf';
 import React from 'react';
 import { BrowserRouter, Switch, Route, Link, useParams } from 'react-router-dom';
 import Search from './search.js';
-import {Entity, Entities} from './entity.proto';
-
-async function getThumbnailPaths() {
-    const rsp = await fetch("/list");
-    const blob = await rsp.blob();
-    const buf = await blob.arrayBuffer();
-
-    const thumbnailPaths = [];
-    const entities = Entities.read(new Pbf(buf));
-    for (let entity of entities.entity) {
-        thumbnailPaths.push(entity);
-    }
-
-    return thumbnailPaths;
-}
-
-function getEntity(id) {
-    var fetchPath = `/media/id/${id}`;
-    const response = fetch(fetchPath).then((response) => {
-        return response.blob();
-    }).then((blob) => {
-        return blob.arrayBuffer();
-    }).then((buf) => {
-        console.log(buf);
-        return Entity.read(new Pbf(buf)).preview_path;
-    });
-    return response;
-}
+import {Entity, Entities} from './api.js';
 
 class Pic extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            entity: [],
             path: []
         };
     }
 
-    getPath(id) {
-        getEntity(id).then((path) => {
-            let real_path = `/media/${path.replace(/\\/, "/")}`;
-            this.setState({path: real_path});
-        })
+    async getPath(id) {
+        // TODO: Update this to preview_path
+        const entity = await Entity.fetch(id);
+        this.setState({path: `/media/${entity.path}`});
     }
 
     componentDidMount() {
@@ -52,40 +23,20 @@ class Pic extends React.Component {
     }
 
     render() {
-        return (
-            <div>
-                <img src={this.state.path} />
-            </div>
-        );
+        return <img src={this.state.path} />;
     }
 }
 
-class Media extends React.Component {
+class MediaList extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
-            media: [],
-            entities: []
+            entities: null,
         };
     }
 
-    getThumbnails() {
-        getThumbnailPaths().then((entities) => {
-            const thumbnails = [];
-            var id = 0;
-            for (let e of entities) {
-                let orig_path = e.thumbnail_path;
-                let path = `/media/${orig_path.replace(/\\/, "/")}`;
-                let link = `/media/id/${e.id}`
-                thumbnails.push(
-                        <div key={id} className="media-thumbnail">
-                            <Link to={link}><img src={path} /></Link>
-                        </div>)
-                id = id + 1;
-            }
-
-            this.setState({ media: thumbnails, entities: entities });
-        });
+    async getThumbnails() {
+        this.setState({ entities: await Entities.fetch() });
     }
 
     componentDidMount() {
@@ -93,21 +44,35 @@ class Media extends React.Component {
     }
 
     render() {
+        let entities = [];
+        if (this.state.entities != null) {
+            for (let entity of this.state.entities.entity) {
+                entities.push(
+                    <Link className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
+                        <img src={`/media/${entity.thumbnail_path}`} />
+                    </Link>
+                );
+            }
+        }
         return (
             <div className="media-thumbnail-list">
-                <BrowserRouter>
-                    <Switch>
-                        <Route exact path="/">
-                            {this.state.media}
-                        </Route>
-                        <Route exact path="/media/id/:id" children={({ match }) => {
-                            return <Pic entity={match.params.id} />;
-                        }} />
-                    </Switch>
-                </BrowserRouter>
+                {entities}
             </div>
         );
     }
+}
+
+function Media(props) {
+    return (
+        <BrowserRouter>
+            <Switch>
+                <Route exact path="/"><MediaList /></Route>
+                <Route exact path="/media/:id" children={({ match }) => {
+                    return <Pic entity={match.params.id} />;
+                }} />
+            </Switch>
+        </BrowserRouter>
+    );
 }
 
 class App extends React.Component {
