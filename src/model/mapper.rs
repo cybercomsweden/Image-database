@@ -76,28 +76,28 @@ impl Entity {
                 .query_one(
                     format!(
                         "
-                    INSERT INTO entity(
-                        media_type,
-                        path,
-                        thumbnail_path,
-                        preview_path,
-                        size,
-                        sha3,
-                        created,
-                        location
-                    )
-                    VALUES(
-                        $1,
-                        $2,
-                        $3,
-                        $4,
-                        $5,
-                        $6,
-                        $7,
-                        $8
-                    )
-                    RETURNING {}
-                ",
+                            INSERT INTO entity(
+                                media_type,
+                                path,
+                                thumbnail_path,
+                                preview_path,
+                                size,
+                                sha3,
+                                created,
+                                location
+                            )
+                            VALUES(
+                                $1,
+                                $2,
+                                $3,
+                                $4,
+                                $5,
+                                $6,
+                                $7,
+                                $8
+                            )
+                            RETURNING {}
+                        ",
                         Self::COLS.join(", "),
                     )
                     .as_str(),
@@ -242,10 +242,10 @@ impl Tag {
                 .query_one(
                     format!(
                         "
-                        INSERT INTO tag(pid, canonical_name, name, type)
-                        VALUES($1, $2, $3, $4)
-                        RETURNING {}
-                    ",
+                            INSERT INTO tag(pid, canonical_name, name, type)
+                            VALUES($1, $2, $3, $4)
+                            RETURNING {}
+                        ",
                         Self::COLS.join(", "),
                     )
                     .as_str(),
@@ -304,16 +304,16 @@ impl Tag {
             .query_raw(
                 format!(
                     "
-                    WITH RECURSIVE recursetree AS (
-                        SELECT * FROM tag WHERE canonical_name = $1
-                      UNION
-                        SELECT t.*
-                        FROM tag t
-                        JOIN recursetree rt ON rt.id = t.pid
-                    )
-                    SELECT {}
-                    FROM recursetree
-               ",
+                        WITH RECURSIVE recursetree AS (
+                            SELECT * FROM tag WHERE canonical_name = $1
+                          UNION
+                            SELECT t.*
+                            FROM tag t
+                            JOIN recursetree rt ON rt.id = t.pid
+                        )
+                        SELECT {}
+                        FROM recursetree
+                   ",
                     Self::COLS.join(", "),
                 )
                 .as_str(),
@@ -333,11 +333,11 @@ impl Tag {
                 .query_one(
                     format!(
                         "
-                    UPDATE tag
-                    SET pid = $1
-                    WHERE canonical_name = $2
-                    RETURNING {}
-                    ",
+                            UPDATE tag
+                            SET pid = $1
+                            WHERE canonical_name = $2
+                            RETURNING {}
+                        ",
                         Self::COLS.join(", "),
                     )
                     .as_str(),
