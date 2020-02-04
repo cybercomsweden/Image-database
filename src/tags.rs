@@ -83,7 +83,23 @@ pub async fn search_tag(client: &Client, tag: String) -> Result<HashMap<PathBuf,
     Ok(imgs)
 }
 
-pub async fn add_parent(client: &Client, tag: String, parent: String) -> Result<()> {
-    dbg!(Tag::add_parent(&client, &tag, &parent).await?);
+pub async fn add_parent(client: &Client, child: String, parent: String) -> Result<()> {
+    let parent = Tag::get_from_canonical_name(&client, Tag::canonical_name(&parent)?)
+        .await
+        .ok_or(anyhow!("Parent {} does not exist", parent))?;
+    let mut child = Tag::get_from_canonical_name(&client, Tag::canonical_name(&child)?)
+        .await
+        .ok_or(anyhow!("Child {} does not exist", child))?;
+    child.pid = Some(parent.id);
+    child.save(&client).await?;
+    Ok(())
+}
+
+pub async fn remove_parent(client: &Client, tag: String) -> Result<()> {
+    let mut tag = Tag::get_from_canonical_name(&client, Tag::canonical_name(&tag)?)
+        .await
+        .ok_or(anyhow!("Tag {} does not exist", tag))?;
+    tag.pid = None;
+    tag.save(&client).await?;
     Ok(())
 }

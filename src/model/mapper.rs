@@ -212,7 +212,7 @@ impl Tag {
         })
     }
 
-    fn canonical_name(name: &str) -> Result<String> {
+    pub fn canonical_name(name: &str) -> Result<String> {
         // NOTE: only tag in english atm
         let re_char = Regex::new(r"[^A-Za-z0-9\s]")?;
         let re_space = Regex::new(r"\s+")?;
@@ -323,28 +323,32 @@ impl Tag {
             .map(|row| Ok(Self::from_row(&row?)?)))
     }
 
-    pub async fn add_parent(client: &Client, tag: &str, parent: &str) -> Result<Self> {
-        let pid = &Self::get_from_canonical_name(&client, Self::canonical_name(&parent)?)
-            .await
-            .ok_or(anyhow!("Parent {} does not exist", parent))?
-            .id;
-        Ok(Self::from_row(
-            &client
-                .query_one(
-                    format!(
-                        "
-                            UPDATE tag
-                            SET pid = $1
-                            WHERE canonical_name = $2
-                            RETURNING {}
-                        ",
-                        Self::COLS.join(", "),
-                    )
-                    .as_str(),
-                    &[pid, &Self::canonical_name(&tag)?],
+    pub async fn save(&self, client: &Client) -> Result<()> {
+        client
+            .query_one(
+                format!(
+                    "
+                        UPDATE tag
+                        SET pid = $1,
+                            name = $2,
+                            canonical_name = $3,
+                            type = $4
+                        WHERE id = $5
+                        RETURNING {}
+                    ",
+                    Self::COLS.join(", "),
                 )
-                .await?,
-        )?)
+                .as_str(),
+                &[
+                    &self.pid,
+                    &self.name,
+                    &self.canonical_name,
+                    &self.tag_type,
+                    &self.id,
+                ],
+            )
+            .await?;
+        Ok(())
     }
 }
 

@@ -68,6 +68,12 @@ pub enum SubCmdTag {
         #[structopt(short = "p", long = "parent")]
         parent: String,
     },
+
+    /// Remove parent to existing tag
+    RemoveParent {
+        #[structopt(short = "t", long = "tag")]
+        tag: String,
+    },
 }
 
 #[derive(Debug, StructOpt)]

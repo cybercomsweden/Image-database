@@ -27,7 +27,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::metadata::{extract_metadata_image_jpg, extract_metadata_video};
 use crate::model::{create_schema, Entity, EntityType, Tag};
-use crate::tags::{add_parent, list_tags, search_tag, tag_image};
+use crate::tags::{add_parent, list_tags, remove_parent, search_tag, tag_image};
 use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, FileType, MediaType};
 
 type DbConn = Client;
@@ -255,6 +255,9 @@ async fn main() -> Result<()> {
         }
         Cmd::Tag(SubCmdTag::AddParent { tag, parent }) => {
             add_parent(&get_db(config).await?, tag, parent).await?;
+        }
+        Cmd::Tag(SubCmdTag::RemoveParent { tag }) => {
+            remove_parent(&get_db(config).await?, tag).await?;
         }
     }
     Ok(())
