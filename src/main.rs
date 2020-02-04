@@ -64,16 +64,14 @@ async fn static_html() -> Result<NamedFile> {
     Ok(NamedFile::open("src/index.html")?)
 }
 
-async fn static_js() -> Result<NamedFile> {
-    Ok(NamedFile::open("dist/index.js")?)
-}
-
-async fn static_css() -> Result<NamedFile> {
-    Ok(NamedFile::open("dist/index.css")?)
-}
-
-async fn js_map() -> Result<NamedFile> {
-    Ok(NamedFile::open("dist/index.js.map")?)
+async fn static_file(req: HttpRequest) -> Result<NamedFile> {
+    match req.match_info().query("file") {
+        "index.js" => Ok(NamedFile::open("dist/index.js")?),
+        "index.js.map" => Ok(NamedFile::open("dist/index.js.map")?),
+        "index.css" => Ok(NamedFile::open("dist/index.css")?),
+        "index.css.map" => Ok(NamedFile::open("dist/index.css.map")?),
+        _ => Err(anyhow!("No such file").into()),
+    }
 }
 
 async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
@@ -114,13 +112,11 @@ async fn run_server(config: Config) -> Result<()> {
             .wrap(Logger::default())
             .app_data(config.clone())
             .data_factory(move || get_db(get_db_config.clone()))
+            .route("/", web::get().to(static_html))
             .route("/list", web::get().to(list_from_database))
             .route("/media/id/{id:.*}", web::get().to(get_from_database))
             .route("/media/{media:.*}", web::get().to(show_media))
-            .route("/static/stylesheet.css", web::get().to(static_css))
-            .route("/", web::get().to(static_html))
-            .route("/index.js.map", web::get().to(js_map))
-            .route("/static/index.js", web::get().to(static_js))
+            .route("/static/{file}", web::get().to(static_file))
     })
     .bind("127.0.0.1:5000")?
     .run()

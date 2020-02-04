@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "parcel": "parcel",
-    "watch": "parcel watch gui/index.jsx"
+    "watch": "parcel watch gui/index.jsx --public-url /static/"
   },
   "repository": {
     "type": "git",
