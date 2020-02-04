@@ -15,7 +15,7 @@ class Pic extends React.Component {
     async getPath(id) {
         // TODO: Update this to preview_path
         const entity = await Entity.fetch(id);
-        this.setState({path: `/media/${entity.path}`});
+        this.setState({path: `/assets/${entity.path}`});
     }
 
     componentDidMount() {
@@ -49,7 +49,7 @@ class MediaList extends React.Component {
             for (let entity of this.state.entities.entity) {
                 entities.push(
                     <Link className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
-                        <img src={`/media/${entity.thumbnail_path}`} />
+                        <img src={`/assets/${entity.thumbnail_path}`} />
                     </Link>
                 );
             }

@@ -55,7 +55,8 @@ async fn get_db(config: Config) -> Result<DbConn> {
 }
 
 async fn show_media(req: HttpRequest) -> Result<NamedFile> {
-    let path: PathBuf = req.match_info().query("media").parse()?;
+    // NOTE: Once we have folders here we have to be careful to not introduce security holes
+    let path: PathBuf = req.match_info().query("path").parse()?;
     let path = std::path::Path::new("dest").join(path.file_name().ok_or(anyhow!("No such image"))?);
     Ok(NamedFile::open(path)?)
 }
@@ -113,10 +114,11 @@ async fn run_server(config: Config) -> Result<()> {
             .app_data(config.clone())
             .data_factory(move || get_db(get_db_config.clone()))
             .route("/", web::get().to(static_html))
+            .route("/media/{id}", web::get().to(static_html))
+            .route("/assets/{path:.*}", web::get().to(show_media))
+            .route("/static/{file}", web::get().to(static_file))
             .route("/api/media", web::get().to(list_from_database))
             .route("/api/media/{id}", web::get().to(get_from_database))
-            .route("/media/{media:.*}", web::get().to(show_media))
-            .route("/static/{file}", web::get().to(static_file))
     })
     .bind("127.0.0.1:5000")?
     .run()
