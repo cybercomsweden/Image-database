@@ -92,7 +92,9 @@ async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
 
 async fn get_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<impl Responder> {
     let eid = req.match_info().query("id").parse::<i32>().unwrap();
-    let entity = Box::pin(Entity::get(&db, eid)).await.ok_or(anyhow!("Entity {} not mapped yet", eid))?;
+    let entity = Box::pin(Entity::get(&db, eid))
+        .await
+        .ok_or(anyhow!("Entity {} not mapped yet", eid))?;
     let mut buf_mut = Vec::new();
     let entity_pb = api::Entity::try_from(entity)?;
     entity_pb.encode(&mut buf_mut)?;

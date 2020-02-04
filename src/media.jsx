@@ -84,7 +84,7 @@ class App extends React.Component {
                         <a className="active" href="/">Media</a>
                         <a href="/">Tags</a>
                     </nav>
-                    <Search options={["Europa", "Asien", "Asia"]} />
+                    <Search options={["Europa", "Asien", "Asia", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "z", "aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj", "kk", "ll", "mm", "nn", "oo", "pp", "qq", "rr", "ss", "tt", "uu", "vv", "ww", "zz"]} />
                 </header>
                 <Media />
             </div>

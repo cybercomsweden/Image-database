@@ -7,7 +7,7 @@ export class Search extends React.Component {
         this.state = {
             userInput: '',
             options: props.options,
-            filteredOptions: [],
+            filteredOptions: props.options,
             showOptions: false,
             activeOption: 0,
             prevOption: 0,
@@ -18,12 +18,20 @@ export class Search extends React.Component {
         this.onBlur = this.onBlur.bind(this);
     }
 
+
+    filterOptions(userData) {
+        const matches = this.state.options.filter(
+            (optionName) =>
+                optionName.toLowerCase().indexOf(userData.toLowerCase()) > -1
+        );
+        return matches.filter(x => !this.state.userInput.split(' ').includes(x));
+
+    }
+
     onChange(event) {
         const userInput = event.target.value;
-        const filteredOptions = this.state.options.filter(
-            (optionName) =>
-                optionName.toLowerCase().indexOf(userInput.toLowerCase()) > -1
-        );
+        const userData = userInput.split(" ");
+        const filteredOptions = this.filterOptions(userData[userData.length-1]);
         this.setState({
             userInput,
             filteredOptions,
@@ -35,10 +43,13 @@ export class Search extends React.Component {
     onKeyDown(event) {
         const { activeOption, filteredOptions } = this.state;
         if (event.key === 'Enter') {
+            let newInput = this.state.userInput.split(' ');
+            newInput[newInput.length-1] = filteredOptions[activeOption];
+            let userInput = newInput.join(" ");
             this.setState({
                 activeOption: 0,
                 showOptions: false,
-                userInput: filteredOptions[activeOption]
+                userInput,
             });
         }
         else if (event.key === 'ArrowUp') {
@@ -79,30 +90,22 @@ export class Search extends React.Component {
             state: {activeOption, filteredOptions, showOptions, userInput }
         } = this;
         let optionList;
-        if (showOptions && userInput) {
-            if (filteredOptions.length) {
-                optionList = (
-                    <ul className="options">
-                        {filteredOptions.map((optionName, index) => {
-                            let className;
-                            if (index === activeOption) {
-                                className = 'option-active';
-                            }
-                            return (
-                                <li className={className} key={optionName}>
-                                    {optionName}
-                                </li>
-                            );
-                        })}
-                    </ul>
-                );
-            } else {
-                optionList = (
-                    <div className='no-options'>
-                        <em>No Option!</em>
-                    </div>
-                );
-            }
+        if (showOptions && filteredOptions.length) {
+            optionList = (
+                <ul className="options">
+                    {filteredOptions.map((optionName, index) => {
+                        let className;
+                        if (index === activeOption) {
+                            className = 'option-active';
+                        }
+                        return (
+                            <li className={className} key={optionName}>
+                                {optionName}
+                            </li>
+                        );
+                    })}
+                </ul>
+            );
         }
         return (
             <div className="search-bar">
