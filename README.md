@@ -23,25 +23,18 @@ To create and run the data base:
 ```
 createdb backlog
 cargo run init-db
-cargo run --release
+cargo run
 ```
 
 To clean up the data base:
 ```
-"dropdb backlog"
+dropdb backlog
 ```
 
 This will create a database superuser (-s) which can create new databases (-d) and new roles (-r) and a database named backlog.
 
 ## Frontend
+```bash
+npm install  # Only necessary when package.json has changed or when cloning the repository
+npm run parcel watch src/index.jsx
 ```
-npm install
-```
-To generate protobuf files:(path/to/protoc/protoc.exe --js_out=import_style=commonjs,binary:. src/entity.proto
-
-To compile javascript code:
-sudo npm install -g yarn
-
-sudo npm install -g parcel-bundler
-
-parcel watch src/index.jsx

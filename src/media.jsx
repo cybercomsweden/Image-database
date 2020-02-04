@@ -1,7 +1,8 @@
-import api from './entity_pb.js';
+import Pbf from 'pbf';
 import React from 'react';
-import { BrowserRouter, Switch, Route, Link, useParams } from 'react-router-dom'
+import { BrowserRouter, Switch, Route, Link, useParams } from 'react-router-dom';
 import Search from './search.js';
+import {Entity, Entities} from './entity.proto';
 
 function getThumbnailPaths() {
     const response = fetch("/list").then((response) => {
@@ -10,7 +11,8 @@ function getThumbnailPaths() {
         return blob.arrayBuffer();
     }).then((buf) => {
         const thumbnailPaths = [];
-        for (let entity of api.Entities.deserializeBinary(buf).getEntityList()) {
+        const entities = Entities.read(new Pbf(buf));
+        for (let entity of entities.entity) {
             thumbnailPaths.push(entity);
         }
 
@@ -26,7 +28,8 @@ function getEntity(id) {
     }).then((blob) => {
         return blob.arrayBuffer();
     }).then((buf) => {
-        return api.Entity.deserializeBinary(buf).getPreviewPath();
+        console.log(buf);
+        return Entity.read(new Pbf(buf)).preview_path;
     });
     return response;
 }
@@ -74,9 +77,9 @@ class Media extends React.Component {
             const thumbnails = [];
             var id = 0;
             for (let e of entities) {
-                let orig_path = e.getThumbnailPath();
+                let orig_path = e.thumbnail_path;
                 let path = `/media/${orig_path.replace(/\\/, "/")}`;
-                let link = `/media/id/${e.getId()}`
+                let link = `/media/id/${e.id}`
                 thumbnails.push(
                         <div key={id} className="media-thumbnail">
                             <Link to={link}><img src={path} /></Link>
