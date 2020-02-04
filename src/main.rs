@@ -69,7 +69,7 @@ async fn static_js() -> Result<NamedFile> {
 }
 
 async fn static_css() -> Result<NamedFile> {
-    Ok(NamedFile::open("src/stylesheet.css")?)
+    Ok(NamedFile::open("dist/index.css")?)
 }
 
 async fn js_map() -> Result<NamedFile> {

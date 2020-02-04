@@ -1,5 +1,5 @@
 import Pbf from 'pbf';
-import {Entity, Entities} from './entity.proto';
+import {Entity, Entities} from '../src/entity.proto';
 
 async function _fetch(cls, resource, init) {
     const rsp = await fetch(resource, init);
