@@ -36,6 +36,7 @@ header {
 .search-bar {
     margin-left: 50px;
     flex-grow: 1;
+    position: relative;
 }
 
 .search-bar > input {
@@ -64,3 +65,25 @@ nav > a.active,
 nav > a:hover {
     border-bottom-color: #ccc;
 }
+
+ul.options {
+    display: block;
+    list-style: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    top: 100%;
+}
+
+ul.options li {
+    display: block;
+    background: whitesmoke;
+    font-size: 1.2rem;
+    width: 100%;
+    border-radius: 2px;
+}
+
+ ul.options li.option-active {
+    font-weight: bold;
+ }

@@ -1,6 +1,7 @@
 import api from './entity_pb.js';
 import React from 'react';
 import { BrowserRouter, Switch, Route, Link, useParams } from 'react-router-dom'
+import Search from './search.js';
 
 function getThumbnailPaths() {
     const response = fetch("/list").then((response) => {
@@ -89,16 +90,6 @@ class Media extends React.Component {
     }
 }
 
-class Search extends React.Component {
-    render() {
-        return (
-            <div id="search" className="search-bar">
-                <input type="text" name="search"/>
-            </div>
-        );
-    }
-}
-
 class App extends React.Component {
     render() {
         return (
@@ -108,7 +99,7 @@ class App extends React.Component {
                         <a className="active" href="/">Media</a>
                         <a href="/">Tags</a>
                     </nav>
-                    <Search />
+                    <Search options={["Europa", "Asien", "Asia"]} />
                 </header>
                 <Media />
             </div>
