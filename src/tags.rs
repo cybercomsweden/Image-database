@@ -8,14 +8,14 @@ use tokio_postgres::Client;
 use crate::error::Result;
 use crate::model::{Entity, Tag, TagToEntity};
 
-fn list_children(hm: &HashMap<Option<i32>, Vec<Tag>>, pid: i32, mut tree: Vec<String>) {
+fn list_children(hm: &HashMap<Option<i32>, Vec<Tag>>, pid: i32, tree: Vec<String>) {
     let children = hm.get(&Some(pid));
     if children.is_none() {
         println!("{:?}", tree);
         return;
     }
     for child in children.unwrap() {
-        let new_tree = tree.clone();
+        let mut new_tree = tree.clone();
         new_tree.push(child.canonical_name.clone());
         list_children(&hm, child.id, new_tree);
     }
