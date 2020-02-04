@@ -90,6 +90,18 @@ async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
         .body(buf_mut))
 }
 
+async fn get_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<impl Responder> {
+    let eid = req.match_info().query("id").parse::<i32>().unwrap();
+    let entity = Box::pin(Entity::get(&db, eid)).await.ok_or(anyhow!("Entity {} not mapped yet", eid))?;
+    let mut buf_mut = Vec::new();
+    let entity_pb = api::Entity::try_from(entity)?;
+    entity_pb.encode(&mut buf_mut)?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/protobuf")
+        .body(buf_mut))
+}
+
 async fn run_server(config: Config) -> Result<()> {
     Ok(HttpServer::new(move || {
         // We need this here to ensure ownership for the data_factory callback to move this into
@@ -101,6 +113,7 @@ async fn run_server(config: Config) -> Result<()> {
             .app_data(config.clone())
             .data_factory(move || get_db(get_db_config.clone()))
             .route("/list", web::get().to(list_from_database))
+            .route("/media/id/{id:.*}", web::get().to(get_from_database))
             .route("/media/{media:.*}", web::get().to(show_media))
             .route("/static/stylesheet.css", web::get().to(static_css))
             .route("/", web::get().to(static_html))
@@ -155,8 +168,8 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
         }
 
         println!("Making thumbnail for {:?}", &path);
-        let (img, thumbnail) = match copy_and_create_thumbnail(&path) {
-            Ok((i, t)) => (i, t),
+        let (img, thumbnail, preview) = match copy_and_create_thumbnail(&path) {
+            Ok((i, t, p)) => (i, t, p),
             Err(err) => {
                 println!("Failed: {}", err);
                 continue;
@@ -168,7 +181,7 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             EntityType::Image,
             &img,
             &thumbnail,
-            "",
+            &preview,
             metadata.len(),
             &sha3,
             &None,

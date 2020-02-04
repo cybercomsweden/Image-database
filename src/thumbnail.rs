@@ -127,7 +127,7 @@ pub fn open_raw_image<P: AsRef<Path>>(path: P) -> Result<DynamicImage> {
     Ok(DynamicImage::ImageRgb8(buf))
 }
 
-pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, PathBuf)> {
+pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, PathBuf, PathBuf)> {
     let file_type = file_type_from_path(path.as_ref()).ok_or(anyhow!("Unknown file type"))?;
     let (img, rotation) = match file_type.media_type() {
         MediaType::Image => (
@@ -180,7 +180,15 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     let thumbnail_path = add_suffix(&dest_path.join(file_name), "_thumbnail", ".jpg")?;
     thumbnail.save(&thumbnail_path)?;
 
-    Ok((copied_orig, thumbnail_path))
+    let (width, height) = img.dimensions();
+    let aspect_ratio = height as f32 / width as f32;
+    let new_height = (800 as f32 * aspect_ratio).ceil() as u32;
+    let preview = img.resize_exact(800, new_height, image::FilterType::CatmullRom);
+    let preview_path = add_suffix(&dest_path.join(file_name), "_preview", ".jpg")?;
+    preview.save(&preview_path)?;
+
+    //Ok((copied_orig, thumbnail_path))
+    Ok((copied_orig, thumbnail_path, preview_path))
 }
 
 fn seam_carving(img: &image::DynamicImage) -> image::DynamicImage {

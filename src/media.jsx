@@ -19,20 +19,42 @@ function getThumbnailPaths() {
     return response;
 }
 
+function getEntity(id) {
+    var fetchPath = `/media/id/${id}`;
+    const response = fetch(fetchPath).then((response) => {
+        return response.blob();
+    }).then((blob) => {
+        return blob.arrayBuffer();
+    }).then((buf) => {
+        return api.Entity.deserializeBinary(buf).getPreviewPath();
+    });
+    return response;
+}
+
 class Pic extends React.Component {
     constructor(props) {
         super(props);
-        console.log(props);
         this.state = {
-            entity: []
+            entity: [],
+            path: []
         };
+    }
+
+    getPath(id) {
+        getEntity(id).then((path) => {
+            let real_path = `/media/${path.replace(/\\/, "/")}`;
+            this.setState({path: real_path});
+        })
+    }
+
+    componentDidMount() {
+        this.getPath(this.props.entity);
     }
 
     render() {
         return (
             <div>
-                {/* TODO: change hardcoded path to picture */}
-                <img src="/media/dest/Thinker-Auguste-Rodin-Museum-Paris-1904.jpg" />
+                <img src={this.state.path} />
             </div>
         );
     }
@@ -53,9 +75,8 @@ class Media extends React.Component {
             var id = 0;
             for (let e of entities) {
                 let orig_path = e.getThumbnailPath();
-                console.log(e.getId());
                 let path = `/media/${orig_path.replace(/\\/, "/")}`;
-                let link = `/media/${e.getId()}`
+                let link = `/media/id/${e.getId()}`
                 thumbnails.push(
                         <div key={id} className="media-thumbnail">
                             <Link to={link}><img src={path} /></Link>
@@ -64,7 +85,6 @@ class Media extends React.Component {
             }
 
             this.setState({ media: thumbnails, entities: entities });
-            console.log(this.state.entities);
         });
     }
 
@@ -80,7 +100,7 @@ class Media extends React.Component {
                         <Route exact path="/">
                             {this.state.media}
                         </Route>
-                        <Route exact path="/media/:id" children={({ match }) => {
+                        <Route exact path="/media/id/:id" children={({ match }) => {
                             return <Pic entity={match.params.id} />;
                         }} />
                     </Switch>
