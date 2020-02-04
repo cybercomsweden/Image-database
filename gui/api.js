@@ -10,11 +10,11 @@ async function _fetch(cls, resource, init) {
 
 
 Entities.fetch = async function() {
-    return await _fetch(Entities, "/list");
+    return await _fetch(Entities, "/api/media");
 }
 
 Entity.fetch = async function(id) {
-    return await _fetch(Entity, `/media/id/${id}`);
+    return await _fetch(Entity, `/api/media/${id}`);
 }
 
 
