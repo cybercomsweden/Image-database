@@ -4,21 +4,18 @@ import { BrowserRouter, Switch, Route, Link, useParams } from 'react-router-dom'
 import Search from './search.js';
 import {Entity, Entities} from './entity.proto';
 
-function getThumbnailPaths() {
-    const response = fetch("/list").then((response) => {
-        return response.blob();
-    }).then((blob) => {
-        return blob.arrayBuffer();
-    }).then((buf) => {
-        const thumbnailPaths = [];
-        const entities = Entities.read(new Pbf(buf));
-        for (let entity of entities.entity) {
-            thumbnailPaths.push(entity);
-        }
+async function getThumbnailPaths() {
+    const rsp = await fetch("/list");
+    const blob = await rsp.blob();
+    const buf = await blob.arrayBuffer();
 
-        return thumbnailPaths;
-    });
-    return response;
+    const thumbnailPaths = [];
+    const entities = Entities.read(new Pbf(buf));
+    for (let entity of entities.entity) {
+        thumbnailPaths.push(entity);
+    }
+
+    return thumbnailPaths;
 }
 
 function getEntity(id) {
