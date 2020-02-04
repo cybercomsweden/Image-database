@@ -50,6 +50,7 @@ pub enum SubCmdTag {
 
     /// List all present tags and their relation
     List,
+
     /// Add tag to image
     Image {
         #[structopt(parse(from_os_str))]
@@ -57,6 +58,15 @@ pub enum SubCmdTag {
 
         #[structopt(short = "t", long = "tag")]
         tag: String,
+    },
+
+    /// Add parent to existing tag
+    AddParent {
+        #[structopt(short = "t", long = "tag")]
+        tag: String,
+
+        #[structopt(short = "p", long = "parent")]
+        parent: String,
     },
 }
 

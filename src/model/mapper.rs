@@ -322,6 +322,30 @@ impl Tag {
             .await?
             .map(|row| Ok(Self::from_row(&row?)?)))
     }
+
+    pub async fn add_parent(client: &Client, tag: &str, parent: &str) -> Result<Self> {
+        let pid = &Self::get_from_canonical_name(&client, Self::canonical_name(&parent)?)
+            .await
+            .ok_or(anyhow!("Parent {} does not exist", parent))?
+            .id;
+        Ok(Self::from_row(
+            &client
+                .query_one(
+                    format!(
+                        "
+                    UPDATE tag
+                    SET pid = $1
+                    WHERE canonical_name = $2
+                    RETURNING {}
+                    ",
+                        Self::COLS.join(", "),
+                    )
+                    .as_str(),
+                    &[pid, &Self::canonical_name(&tag)?],
+                )
+                .await?,
+        )?)
+    }
 }
 
 fn slice_iter<'a>(
@@ -349,7 +373,7 @@ impl TagToEntity {
                         INSERT INTO tag_to_entity(tid, eid)
                         VALUES($1, $2)
                         RETURNING {}
-                    ",
+                        ",
                         Self::COLS.join(", "),
                     )
                     .as_str(),

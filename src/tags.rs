@@ -82,3 +82,8 @@ pub async fn search_tag(client: &Client, tag: String) -> Result<HashMap<PathBuf,
     }
     Ok(imgs)
 }
+
+pub async fn add_parent(client: &Client, tag: String, parent: String) -> Result<()> {
+    dbg!(Tag::add_parent(&client, &tag, &parent).await?);
+    Ok(())
+}
