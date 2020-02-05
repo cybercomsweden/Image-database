@@ -1,4 +1,3 @@
-import Pbf from 'pbf';
 import React from 'react';
 import { BrowserRouter, Switch, Route, Link, useParams } from 'react-router-dom';
 import Search from './search.js';
