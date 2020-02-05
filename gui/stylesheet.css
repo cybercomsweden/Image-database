@@ -6,6 +6,56 @@ body {
   background-color: #eee;
   font-family: 'Open Sans', sans-serif;
 }
+
+button {
+    -webkit-appearance: none;
+    background: transparent;
+    border: 0;
+    outline:0;
+}
+
+.prev {
+    position: absolute;
+    left: 0;
+    top: calc(50% - 40px);
+}
+
+.next {
+    position: absolute;
+    right: 0;
+    top: calc(50% - 40px);
+}
+
+.arrow {
+    cursor: pointer;
+}
+
+.left:hover polyline {
+  stroke-width: 4;
+}
+
+.left:active polyline {
+  stroke-width: 6;
+  transition: all 100ms ease-in-out;
+}
+
+.right:hover polyline {
+  stroke-width: 4;
+}
+
+.right:active polyline {
+    stroke-width: 6;
+    transition: all 100ms ease-in-out;
+  }
+
+.close {
+    position: absolute;
+}
+
+.close:hover line {
+    stroke-width: 4;
+}
+
 .media-thumbnail-list {
   display: grid;
   grid-template-columns: auto auto auto auto auto;
@@ -37,6 +87,19 @@ header {
     margin-left: 50px;
     flex-grow: 1;
     position: relative;
+}
+
+.preview_div {
+    background-color: black;
+    position: relative;
+}
+
+.preview {
+    max-width: 100%;
+    max-height: 80vh;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .search-bar > input {

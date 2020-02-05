@@ -181,13 +181,24 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     thumbnail.save(&thumbnail_path)?;
 
     let (width, height) = img.dimensions();
-    let aspect_ratio = height as f32 / width as f32;
-    let new_height = (800 as f32 * aspect_ratio).ceil() as u32;
-    let preview = img.resize_exact(800, new_height, image::FilterType::CatmullRom);
+    let mut new_width = 4096;
+    let mut new_height = 2160;
     let preview_path = add_suffix(&dest_path.join(file_name), "_preview", ".jpg")?;
-    preview.save(&preview_path)?;
+    if width > new_width || height > new_height {
+        if height > width {
+            let aspect_ratio = width as f32 / height as f32;
+            new_width = (2160 as f32 * aspect_ratio).ceil() as u32;
+        } else {
+            let aspect_ratio = height as f32 / width as f32;
+            new_height = (4096 as f32 * aspect_ratio).ceil() as u32;
+        }
+        let preview = img.resize_exact(new_width, new_height, image::FilterType::CatmullRom);
+        preview.save(&preview_path)?;
+    }
+    else {
+        img.save(&preview_path)?;
+    }
 
-    //Ok((copied_orig, thumbnail_path))
     Ok((copied_orig, thumbnail_path, preview_path))
 }
 
