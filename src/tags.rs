@@ -44,41 +44,11 @@ pub async fn tag_image(client: &Client, path: &PathBuf, tag: String) -> Result<(
     Ok(())
 }
 
-pub async fn search_tag(client: &Client, tag: String) -> Result<HashMap<PathBuf, Vec<Tag>>> {
-    // Find tag and all its children
-    let mut tids = vec![];
-    let mut tags = Box::pin(Tag::search(&client, tag).await?);
-    while let Some(tag) = tags.next().await.transpose()? {
-        tids.push(tag.id);
-    }
-
-    // Find all images with those tags
-    let mut eids = vec![];
-    for tid in tids {
-        let mut entities = Box::pin(TagToEntity::get_from_tid(&client, tid).await?);
-        while let Some(entity) = entities.next().await.transpose()? {
-            eids.push(entity.eid);
-        }
-    }
-
-    // Extract paths to images and all tags corresponding to the image
-    // (not only from the searched tree)
-    let mut imgs = HashMap::new();
-    for eid in eids {
-        let entity = Box::pin(
-            Entity::get(&client, eid)
-                .await
-                .ok_or(anyhow!("Entity {} not mapped yet", eid))?,
-        );
-        let mut tags = Box::pin(TagToEntity::get_from_eid(&client, eid).await?);
-        // Find all tags or the image
-        while let Some(et) = tags.next().await.transpose()? {
-            let tag = Tag::get(&client, et.tid)
-                .await
-                .ok_or(anyhow!("Tag not present"))?;
-
-            imgs.entry(entity.path.clone()).or_insert(vec![]).push(tag);
-        }
+pub async fn search_tags(client: &Client, tags: &Vec<String>) -> Result<Vec<Entity>> {
+    let mut matches = Box::pin(Tag::search(&client, &tags).await?);
+    let mut imgs = vec![];
+    while let Some(img) = matches.next().await.transpose()? {
+        imgs.push(img);
     }
     Ok(imgs)
 }

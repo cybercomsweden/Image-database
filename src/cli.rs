@@ -23,8 +23,9 @@ pub enum Cmd {
     },
 
     Search {
-        #[structopt(parse(from_str))]
-        tag: String,
+        /// One or more tags to search for
+        #[structopt(parse(from_str), required = true)]
+        tags: Vec<String>,
     },
 
     /// View and manage tags

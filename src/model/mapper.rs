@@ -296,31 +296,37 @@ impl Tag {
         Self::from_row(&row).ok()
     }
 
-    pub async fn search<T: Borrow<str>>(
+    pub async fn search(
         client: &Client,
-        tag: T,
-    ) -> Result<impl Stream<Item = Result<Self>>> {
-        Ok(client
-            .query_raw(
+        tags: &Vec<String>,
+    ) -> Result<impl Stream<Item = Result<Entity>>> {
+        let list: Vec<_> = tags
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
                 format!(
                     "
-                        WITH RECURSIVE recursetree AS (
-                            SELECT * FROM tag WHERE canonical_name = $1
-                          UNION
-                            SELECT t.*
-                            FROM tag t
-                            JOIN recursetree rt ON rt.id = t.pid
-                        )
-                        SELECT {}
-                        FROM recursetree
-                   ",
-                    Self::COLS.join(", "),
+                        SELECT e.{}
+                        FROM (
+                            WITH RECURSIVE deeptag AS (
+                                SELECT * FROM tag WHERE canonical_name = ${}
+                                UNION
+                                SELECT t.* FROM tag t JOIN deeptag dt ON dt.id = t.pid
+                            )
+                            SELECT * FROM deeptag
+                        ) t, tag_to_entity t2e, entity e
+                        WHERE t.id = t2e.tid AND t2e.eid = e.id
+                    ",
+                    Entity::COLS.join(", e."),
+                    i + 1
                 )
-                .as_str(),
-                slice_iter(&[&tag.borrow()]),
-            )
+            })
+            .collect();
+        let query = list.join(" INTERSECT ");
+        Ok(client
+            .query_raw(query.as_str(), tags.iter().map(|x| x as &dyn ToSql))
             .await?
-            .map(|row| Ok(Self::from_row(&row?)?)))
+            .map(|row| Ok(Entity::from_row(&row?)?)))
     }
 
     pub async fn save(&self, client: &Client) -> Result<()> {
@@ -352,12 +358,6 @@ impl Tag {
     }
 }
 
-fn slice_iter<'a>(
-    s: &'a [&'a (dyn ToSql + Sync)],
-) -> impl ExactSizeIterator<Item = &'a dyn ToSql> + 'a {
-    s.iter().map(|s| *s as _)
-}
-
 impl TagToEntity {
     pub const COLS: [&'static str; 2] = ["tid", "eid"];
 
@@ -385,39 +385,5 @@ impl TagToEntity {
                 )
                 .await?,
         )?)
-    }
-
-    pub async fn get_from_tid<T: Borrow<i32>>(
-        client: &Client,
-        tid: T,
-    ) -> Result<impl Stream<Item = Result<Self>>> {
-        Ok(client
-            .query_raw(
-                format!(
-                    "SELECT {} FROM tag_to_entity WHERE tid = $1",
-                    Self::COLS.join(", ")
-                )
-                .as_str(),
-                slice_iter(&[&tid.borrow()]),
-            )
-            .await?
-            .map(|row| Ok(Self::from_row(&row?)?)))
-    }
-
-    pub async fn get_from_eid<T: Borrow<i32>>(
-        client: &Client,
-        eid: T,
-    ) -> Result<impl Stream<Item = Result<Self>>> {
-        Ok(client
-            .query_raw(
-                format!(
-                    "SELECT {} FROM tag_to_entity WHERE eid = $1",
-                    Self::COLS.join(", ")
-                )
-                .as_str(),
-                slice_iter(&[&eid.borrow()]),
-            )
-            .await?
-            .map(|row| Ok(Self::from_row(&row?)?)))
     }
 }

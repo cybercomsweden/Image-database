@@ -27,7 +27,7 @@ use crate::config::Config;
 use crate::error::Result;
 use crate::metadata::{extract_metadata_image_jpg, extract_metadata_video};
 use crate::model::{create_schema, Entity, EntityType, Tag};
-use crate::tags::{add_parent, list_tags, remove_parent, search_tag, tag_image};
+use crate::tags::{add_parent, list_tags, remove_parent, search_tags, tag_image};
 use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, FileType, MediaType};
 
 type DbConn = Client;
@@ -226,8 +226,8 @@ async fn main() -> Result<()> {
                 println!("{:#?}", extract_metadata_video(&path)?);
             }
         }
-        Cmd::Search { tag } => {
-            println!("{:#?}", search_tag(&get_db(config).await?, tag).await?);
+        Cmd::Search { tags } => {
+            dbg!(search_tags(&get_db(config).await?, &tags).await?);
         }
         Cmd::Tag(SubCmdTag::Add {
             name,
