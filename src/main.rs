@@ -71,6 +71,7 @@ async fn static_file(req: HttpRequest) -> Result<NamedFile> {
         "index.js.map" => Ok(NamedFile::open("dist/index.js.map")?),
         "index.css" => Ok(NamedFile::open("dist/index.css")?),
         "index.css.map" => Ok(NamedFile::open("dist/index.css.map")?),
+        "mapbox-icon.png" => Ok(NamedFile::open("gui/mapbox-icon.png")?),
         _ => Err(anyhow!("No such file").into()),
     }
 }
@@ -153,6 +154,7 @@ async fn run_server(config: Config) -> Result<()> {
             .data_factory(move || get_db(get_db_config.clone()))
             .route("/", web::get().to(static_html))
             .route("/tags", web::get().to(static_html))
+            .route("/map", web::get().to(static_html))
             .route("/media/{id}", web::get().to(static_html))
             .route("/assets/{path:.*}", web::get().to(show_media))
             .route("/static/{file}", web::get().to(static_file))
