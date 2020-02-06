@@ -1,6 +1,6 @@
 import React from "react";
 import {
-    BrowserRouter, Link, Route, Switch,
+    BrowserRouter, Link, NavLink, Route, Switch,
 } from "react-router-dom";
 import { Search } from "./search.jsx";
 import { Entities } from "./api.js";
@@ -106,56 +106,71 @@ class Media extends React.Component {
         }
         const entities = entitiesPb.entity;
         return (
-            <BrowserRouter>
-                <Switch>
-                    <Route exact path="/"><MediaList entities={entities} /></Route>
-                    <Route
-                        exact
-                        path="/media/:id"
-                        children={({ match }) => {
-                            for (let i = 0; i < entities.length; i += 1) {
-                                const entity = entities[i];
-                                if (entity.id !== parseInt(match.params.id)) {
-                                    continue;
-                                }
-                                let prevEntity = null;
-                                if (i > 0) {
-                                    prevEntity = entities[i - 1];
-                                }
-                                let nextEntity = null;
-                                if (i < entities.length - 1) {
-                                    nextEntity = entities[i + 1];
-                                }
-                                return (
-                                    <Pic
-                                        entity={entity}
-                                        prevEntity={prevEntity}
-                                        nextEntity={nextEntity}
-                                    />
-                                );
+            <Switch>
+                <Route exact path="/"><MediaList entities={entities} /></Route>
+                <Route
+                    exact
+                    path="/media/:id"
+                    children={({ match }) => {
+                        for (let i = 0; i < entities.length; i += 1) {
+                            const entity = entities[i];
+                            if (entity.id !== parseInt(match.params.id)) {
+                                continue;
                             }
-                            return "No image found";
-                        }}
-                    />
-                </Switch>
-            </BrowserRouter>
+                            let prevEntity = null;
+                            if (i > 0) {
+                                prevEntity = entities[i - 1];
+                            }
+                            let nextEntity = null;
+                            if (i < entities.length - 1) {
+                                nextEntity = entities[i + 1];
+                            }
+                            return (
+                                <Pic
+                                    entity={entity}
+                                    prevEntity={prevEntity}
+                                    nextEntity={nextEntity}
+                                />
+                            );
+                        }
+                        return "No image found";
+                    }}
+                />
+            </Switch>
         );
     }
+}
+
+class TagList extends React.Component {
+    render() {
+        return "HELLO!";
+    }
+}
+
+function ApiTags() {
+    return (
+        <TagList />
+    );
 }
 
 class App extends React.Component {
     render() {
         return (
-            <div className="content">
-                <header>
-                    <nav>
-                        <a className="active" href="/">Media</a>
-                        <a href="/">Tags</a>
-                    </nav>
-                    <Search options={["Europa", "Asien", "Asia", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "z", "aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj", "kk", "ll", "mm", "nn", "oo", "pp", "qq", "rr", "ss", "tt", "uu", "vv", "ww", "zz"]} />
-                </header>
-                <Media />
-            </div>
+            <BrowserRouter>
+                <div className="content">
+                    <header>
+                        <nav>
+                            <NavLink to="/" isActive={(match, location) => location.pathname === "/" || location.pathname.match(/^\/media\//) !== null}>Media</NavLink>
+                            <NavLink to="/tags">Tags</NavLink>
+                        </nav>
+                        <Search options={["Europa", "Asien", "Asia", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "z", "aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj", "kk", "ll", "mm", "nn", "oo", "pp", "qq", "rr", "ss", "tt", "uu", "vv", "ww", "zz"]} />
+                    </header>
+                    <Switch>
+                        <Route path="/tags"><ApiTags /></Route>
+                        <Route path="/"><Media /></Route>
+                    </Switch>
+                </div>
+            </BrowserRouter>
         );
     }
 }
