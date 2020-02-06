@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ $(id -u) -ne 0 || $(logname) == "root" ]]; then
-    echo "Script must not be run as root using sudo"
+    echo "Script must be run as root. Please re-run with 'sudo $0'"
     exit 1
 fi
 
