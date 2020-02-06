@@ -3,7 +3,7 @@ import {
     BrowserRouter, Link, NavLink, Route, Switch,
 } from "react-router-dom";
 import { Search } from "./search.jsx";
-import { Entities } from "./api.js";
+import { Entities, Tags } from "./api.js";
 
 // Temporarily disable warning since component will have state later
 // eslint-disable-next-line react/prefer-stateless-function
@@ -140,16 +140,40 @@ class Media extends React.Component {
     }
 }
 
-class TagList extends React.Component {
-    render() {
-        return "HELLO!";
+class ApiTags extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            tags: null,
+        };
     }
-}
 
-function ApiTags() {
-    return (
-        <TagList />
-    );
+    componentDidMount() {
+        this.getTags();
+    }
+
+    async getTags() {
+        this.setState({ tags: await Tags.fetch() });
+    }
+
+    render() {
+        const { tags: tagsPb } = this.state;
+        if (tagsPb === null) {
+            return "Loading";
+        }
+        if (!tagsPb.tag.length) {
+            return "No tags yet";
+        }
+        const tags = [];
+        for (const tag of tagsPb.tag) {
+            tags.push(<div key={tag.id}>{tag.canonical_name}</div>);
+        }
+        return (
+            <div className="tag-list">
+                {tags}
+            </div>
+        );
+    }
 }
 
 function App() {

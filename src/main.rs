@@ -103,6 +103,34 @@ async fn get_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<im
         .body(buf_mut))
 }
 
+async fn tags_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
+    let mut tags = Box::pin(Tag::list(&db).await?);
+    let mut tags_pb = api::Tags::default();
+    while let Some(tag) = tags.next().await.transpose()? {
+        tags_pb.add(api::Tag::try_from(tag)?);
+    }
+    let mut buf_mut = Vec::new();
+    tags_pb.encode(&mut buf_mut)?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/protobuf")
+        .body(buf_mut))
+}
+
+async fn get_tag_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<impl Responder> {
+    let name = Tag::canonical_name(req.match_info().query("name"))?;
+    let tag = Box::pin(Tag::get_from_canonical_name(&db, name.clone()))
+        .await
+        .ok_or(anyhow!("Tag {} not mapped yet", name))?;
+    let mut buf_mut = Vec::new();
+    let tag_pb = api::Tag::try_from(tag)?;
+    tag_pb.encode(&mut buf_mut)?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/protobuf")
+        .body(buf_mut))
+}
+
 async fn run_server(config: Config) -> Result<()> {
     Ok(HttpServer::new(move || {
         // We need this here to ensure ownership for the data_factory callback to move this into
@@ -114,11 +142,14 @@ async fn run_server(config: Config) -> Result<()> {
             .app_data(config.clone())
             .data_factory(move || get_db(get_db_config.clone()))
             .route("/", web::get().to(static_html))
+            .route("/tags", web::get().to(static_html))
             .route("/media/{id}", web::get().to(static_html))
             .route("/assets/{path:.*}", web::get().to(show_media))
             .route("/static/{file}", web::get().to(static_file))
             .route("/api/media", web::get().to(list_from_database))
             .route("/api/media/{id}", web::get().to(get_from_database))
+            .route("/api/tags", web::get().to(tags_from_database))
+            .route("/api/tags/{name}", web::get().to(get_tag_from_database))
     })
     .bind("127.0.0.1:5000")?
     .run()

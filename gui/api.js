@@ -1,5 +1,7 @@
 import Pbf from "pbf";
-import { Entity, Entities } from "../src/entity.proto";
+import {
+    Entity, Entities, Tag, Tags,
+} from "../src/entity.proto";
 
 async function fetchPb(cls, resource, init) {
     const rsp = await fetch(resource, init);
@@ -17,8 +19,18 @@ Entity.fetch = async function fetchEntity(id) {
     return fetchPb(Entity, `/api/media/${id}`);
 };
 
+Tags.fetch = async function fetchTags() {
+    return fetchPb(Tags, "/api/tags");
+};
+
+Tag.fetch = async function fetchTag(name) {
+    return fetchPb(Tag, `/api/tags/${name}`);
+};
+
 
 export {
     Entity,
     Entities,
+    Tag,
+    Tags,
 };

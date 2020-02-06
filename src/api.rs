@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 
 use crate::model::Entity as DbEntity;
+use crate::model::Tag as DbTag;
 include!(concat!(env!("OUT_DIR"), "/api.rs"));
 
 impl TryFrom<DbEntity> for Entity {
@@ -43,5 +44,23 @@ impl TryFrom<DbEntity> for Entity {
 impl Entities {
     pub fn add(&mut self, entity: Entity) {
         self.entity.push(entity);
+    }
+}
+
+impl TryFrom<DbTag> for Tag {
+    type Error = crate::error::Error;
+    fn try_from(db_tag: DbTag) -> crate::error::Result<Tag> {
+        let mut tag = Tag::default();
+        tag.id = db_tag.id.try_into()?;
+        //tag.pid = db_tag.pid.try_into()?; // TODO: Optional
+        tag.canonical_name = db_tag.canonical_name.try_into()?;
+        tag.name = db_tag.name.try_into()?;
+        Ok(tag)
+    }
+}
+
+impl Tags {
+    pub fn add(&mut self, tag: Tag) {
+        self.tag.push(tag);
     }
 }

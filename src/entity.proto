@@ -41,3 +41,22 @@ message Entity {
         double latitude = 2;
     }
 }
+
+message Tags {
+    repeated Tag tag = 1;
+}
+
+message Tag {
+    uint32 id = 1;
+    uint32 pid = 2;
+    string canonical_name = 3;
+    string name = 4;
+    TagType tag_type = 5;
+
+    enum TagType {
+        PERSON = 0;
+        PLACE = 1;
+        EVENT = 2;
+        OTHER = 3;
+    }
+}
