@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 if [[ $(id -u) -ne 0 || $(logname) == "root" ]]; then
     echo "Script must not be run as root using sudo"
     exit 1
@@ -51,6 +50,16 @@ if [[ $(sudo -u postgres psql postgres -tAc "SELECT 1 FROM pg_database WHERE dat
     echo "Creating database 'backlog'"
     sudo -u $USER createdb backlog
     cargo run init-db
+fi
+
+if [ ! -L .git/hooks/pre-commit ]; then
+    echo "Installing pre-commit hook"
+    sudo -u $USER ln -s ../../pre-commit .git/hooks/pre-commit
+fi
+
+if [ ! -d node_modules/ ]; then
+    echo "Installing JavaScript dependencies"
+    npm install
 fi
 
 echo "Done"

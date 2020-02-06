@@ -1,0 +1,26 @@
+#!/bin/bash
+
+exit_code=0
+
+cargo fmt -- --quiet --check
+if [ $? -ne 0 ]; then
+    echo "Rust code is not properly formatted 😑"
+    echo "Please run 'cargo fmt' before committing 🙏"
+    exit_code=1
+fi
+
+npx eslint --ext js,jsx --quiet gui/
+if [ $? -ne 0 ]; then
+    echo "JavaScript code is not properly formatted 😑"
+    echo "Please run 'npm run fmt' and fix all errors before committing 🙏"
+    exit_code=1
+fi
+
+
+if [ $exit_code -ne 0 ]; then
+    echo
+    echo "The code style police wants to know your location 👮"
+    exit $exit_code
+fi
+
+echo "Code formatting and linting looking good 👌"
