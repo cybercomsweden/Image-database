@@ -1,6 +1,6 @@
 import Pbf from "pbf";
 import {
-    Entity, Entities, Tag, Tags,
+    AutocompleteTags, Entity, Entities, Tag, Tags,
 } from "../src/entity.proto";
 
 async function fetchPb(cls, resource, init) {
@@ -10,6 +10,10 @@ async function fetchPb(cls, resource, init) {
     return cls.read(new Pbf(buf));
 }
 
+
+AutocompleteTags.fetch = async function fetchAutocompleteTags() {
+    return fetchPb(AutocompleteTags, "/api/tags/autocomplete");
+};
 
 Entities.fetch = async function fetchEntities() {
     return fetchPb(Entities, "/api/media");
@@ -29,6 +33,7 @@ Tag.fetch = async function fetchTag(name) {
 
 
 export {
+    AutocompleteTags,
     Entity,
     Entities,
     Tag,

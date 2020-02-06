@@ -131,6 +131,16 @@ async fn get_tag_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Resul
         .body(buf_mut))
 }
 
+async fn autocomplete_tags(db: web::Data<DbConn>) -> Result<impl Responder> {
+    let tags_pb = dbg!(api::AutocompleteTags::from_db(&db).await?);
+    let mut buf_mut = Vec::new();
+    tags_pb.encode(&mut buf_mut)?;
+
+    Ok(HttpResponse::Ok()
+        .content_type("application/protobuf")
+        .body(buf_mut))
+}
+
 async fn run_server(config: Config) -> Result<()> {
     Ok(HttpServer::new(move || {
         // We need this here to ensure ownership for the data_factory callback to move this into
@@ -149,6 +159,7 @@ async fn run_server(config: Config) -> Result<()> {
             .route("/api/media", web::get().to(list_from_database))
             .route("/api/media/{id}", web::get().to(get_from_database))
             .route("/api/tags", web::get().to(tags_from_database))
+            .route("/api/tags/autocomplete", web::get().to(autocomplete_tags))
             .route("/api/tags/{name}", web::get().to(get_tag_from_database))
     })
     .bind("127.0.0.1:5000")?

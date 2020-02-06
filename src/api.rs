@@ -1,14 +1,17 @@
 use anyhow::anyhow;
+use futures::{pin_mut, StreamExt};
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use tokio_postgres::{Client, Row};
 
+use crate::error::{Error, Result};
 use crate::model::Entity as DbEntity;
 use crate::model::Tag as DbTag;
 include!(concat!(env!("OUT_DIR"), "/api.rs"));
 
 impl TryFrom<DbEntity> for Entity {
-    type Error = crate::error::Error;
-    fn try_from(db_entity: DbEntity) -> crate::error::Result<Entity> {
+    type Error = Error;
+    fn try_from(db_entity: DbEntity) -> Result<Entity> {
         let mut entity = Entity::default();
         entity.id = db_entity.id.try_into()?;
         //TODO: add media type
@@ -48,8 +51,8 @@ impl Entities {
 }
 
 impl TryFrom<DbTag> for Tag {
-    type Error = crate::error::Error;
-    fn try_from(db_tag: DbTag) -> crate::error::Result<Tag> {
+    type Error = Error;
+    fn try_from(db_tag: DbTag) -> Result<Tag> {
         let mut tag = Tag::default();
         tag.id = db_tag.id.try_into()?;
         //tag.pid = db_tag.pid.try_into()?; // TODO: Optional
@@ -62,5 +65,37 @@ impl TryFrom<DbTag> for Tag {
 impl Tags {
     pub fn add(&mut self, tag: Tag) {
         self.tag.push(tag);
+    }
+}
+
+impl AutocompleteTags {
+    pub fn from_row(row: &Row) -> Result<AutocompleteTag> {
+        Ok(AutocompleteTag {
+            canonical_name: row.try_get::<_, String>(0)?,
+            path: row.try_get::<_, Vec<String>>(1)?,
+        })
+    }
+
+    pub async fn from_db(client: &Client) -> Result<Self> {
+        let db_tags = client
+            .query_raw(
+                "
+                    WITH RECURSIVE deeptag AS (
+                        SELECT id, canonical_name, array[name] AS path FROM tag WHERE pid IS NULL
+                        UNION
+                        SELECT t.id, t.canonical_name, array_append(dt.path, t.name) FROM tag t JOIN deeptag dt ON dt.id = t.pid
+                    )
+                    SELECT canonical_name, path FROM deeptag
+                ",
+                vec![],
+            )
+            .await?
+            .map(|row| -> Result<AutocompleteTag> { Ok(Self::from_row(&row?)?) });
+        pin_mut!(db_tags);
+        let mut tags = AutocompleteTags::default();
+        while let Some(tag) = db_tags.next().await.transpose()? {
+            tags.tag.push(tag);
+        }
+        Ok(tags)
     }
 }

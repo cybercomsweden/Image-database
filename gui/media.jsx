@@ -185,7 +185,7 @@ function App() {
                         <NavLink to="/" isActive={(match, location) => location.pathname === "/" || location.pathname.match(/^\/media\//) !== null}>Media</NavLink>
                         <NavLink to="/tags">Tags</NavLink>
                     </nav>
-                    <Search options={["Europa", "Asien", "Asia", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "z", "aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj", "kk", "ll", "mm", "nn", "oo", "pp", "qq", "rr", "ss", "tt", "uu", "vv", "ww", "zz"]} />
+                    <Search />
                 </header>
                 <Switch>
                     <Route path="/tags"><ApiTags /></Route>

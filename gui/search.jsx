@@ -1,12 +1,13 @@
 import React from "react";
+import { AutocompleteTags } from "./api.js";
 
 export class Search extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             userInput: "",
-            options: props.options,
-            filteredOptions: props.options,
+            options: null,
+            filteredOptions: null,
             showOptions: false,
             activeOption: 0,
             prevOption: 0,
@@ -17,6 +18,9 @@ export class Search extends React.Component {
         this.onBlur = this.onBlur.bind(this);
     }
 
+    componentDidMount() {
+        this.getTags();
+    }
 
     onChange(event) {
         const userInput = event.target.value;
@@ -34,7 +38,7 @@ export class Search extends React.Component {
         const { activeOption, filteredOptions, userInput } = this.state;
         if (event.key === "Enter") {
             const newInput = userInput.split(" ");
-            newInput[newInput.length - 1] = filteredOptions[activeOption];
+            newInput[newInput.length - 1] = filteredOptions[activeOption].canonical_name;
             this.setState({
                 activeOption: 0,
                 showOptions: false,
@@ -71,12 +75,19 @@ export class Search extends React.Component {
         });
     }
 
+    async getTags() {
+        const tags = await AutocompleteTags.fetch();
+        this.setState({ options: tags.tag, filteredOptions: tags.tag });
+    }
+
     filterOptions(userData) {
         const { options, userInput } = this.state;
+        // TODO: Only filters on canonical name, will not work with åöä
         const matches = options.filter(
-            (optionName) => optionName.toLowerCase().indexOf(userData.toLowerCase()) > -1,
+            (optionName) => optionName.canonical_name.indexOf(userData.toLowerCase()) > -1,
         );
-        return matches.filter((x) => !userInput.split(" ").includes(x));
+        // Removes the tags that are already used from the list of suggested tags
+        return matches.filter((x) => !userInput.split(" ").includes(x.canonical_name));
     }
 
     render() {
@@ -87,14 +98,14 @@ export class Search extends React.Component {
         if (showOptions && filteredOptions.length) {
             optionList = (
                 <ul className="options">
-                    {filteredOptions.map((optionName, index) => {
+                    {filteredOptions.map((tag, index) => {
                         let className;
                         if (index === activeOption) {
                             className = "option-active";
                         }
                         return (
-                            <li className={className} key={optionName}>
-                                {optionName}
+                            <li className={className} key={tag.canonical_name}>
+                                {tag.path.join("/")}
                             </li>
                         );
                     })}

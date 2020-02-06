@@ -60,3 +60,12 @@ message Tag {
         OTHER = 3;
     }
 }
+
+message AutocompleteTags {
+    repeated AutocompleteTag tag = 1;
+}
+
+message AutocompleteTag {
+    repeated string path = 1;
+    string canonical_name = 2;
+}
