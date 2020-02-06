@@ -115,7 +115,7 @@ class Media extends React.Component {
                         children={({ match }) => {
                             for (let i = 0; i < entities.length; i += 1) {
                                 const entity = entities[i];
-                                if (entity.id !== match.params.id) {
+                                if (entity.id !== parseInt(match.params.id)) {
                                     continue;
                                 }
                                 let prevEntity = null;
