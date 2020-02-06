@@ -194,8 +194,7 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
         }
         let preview = img.resize_exact(new_width, new_height, image::FilterType::CatmullRom);
         preview.save(&preview_path)?;
-    }
-    else {
+    } else {
         img.save(&preview_path)?;
     }
 
