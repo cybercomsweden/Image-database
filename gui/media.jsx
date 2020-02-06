@@ -5,6 +5,8 @@ import {
 import { Search } from "./search.jsx";
 import { Entities } from "./api.js";
 
+// Temporarily disable warning since component will have state later
+// eslint-disable-next-line react/prefer-stateless-function
 class Pic extends React.Component {
     render() {
         const { entity, prevEntity, nextEntity } = this.props;
@@ -62,25 +64,22 @@ class Pic extends React.Component {
     }
 }
 
-class MediaList extends React.Component {
-    render() {
-        const { entities } = this.props;
-        const entityLinks = [];
-        if (entities != null) {
-            for (const entity of entities) {
-                entityLinks.push(
-                    <Link className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
-                        <img src={`/assets/${entity.thumbnail_path}`} alt="" />
-                    </Link>,
-                );
-            }
+function MediaList({ entities }) {
+    const entityLinks = [];
+    if (entities != null) {
+        for (const entity of entities) {
+            entityLinks.push(
+                <Link className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
+                    <img src={`/assets/${entity.thumbnail_path}`} alt="" />
+                </Link>,
+            );
         }
-        return (
-            <div className="media-thumbnail-list">
-                {entityLinks}
-            </div>
-        );
     }
+    return (
+        <div className="media-thumbnail-list">
+            {entityLinks}
+        </div>
+    );
 }
 
 class Media extends React.Component {
@@ -114,7 +113,7 @@ class Media extends React.Component {
                     children={({ match }) => {
                         for (let i = 0; i < entities.length; i += 1) {
                             const entity = entities[i];
-                            if (entity.id !== parseInt(match.params.id)) {
+                            if (entity.id !== parseInt(match.params.id, 10)) {
                                 continue;
                             }
                             let prevEntity = null;
@@ -153,26 +152,24 @@ function ApiTags() {
     );
 }
 
-class App extends React.Component {
-    render() {
-        return (
-            <BrowserRouter>
-                <div className="content">
-                    <header>
-                        <nav>
-                            <NavLink to="/" isActive={(match, location) => location.pathname === "/" || location.pathname.match(/^\/media\//) !== null}>Media</NavLink>
-                            <NavLink to="/tags">Tags</NavLink>
-                        </nav>
-                        <Search options={["Europa", "Asien", "Asia", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "z", "aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj", "kk", "ll", "mm", "nn", "oo", "pp", "qq", "rr", "ss", "tt", "uu", "vv", "ww", "zz"]} />
-                    </header>
-                    <Switch>
-                        <Route path="/tags"><ApiTags /></Route>
-                        <Route path="/"><Media /></Route>
-                    </Switch>
-                </div>
-            </BrowserRouter>
-        );
-    }
+function App() {
+    return (
+        <BrowserRouter>
+            <div className="content">
+                <header>
+                    <nav>
+                        <NavLink to="/" isActive={(match, location) => location.pathname === "/" || location.pathname.match(/^\/media\//) !== null}>Media</NavLink>
+                        <NavLink to="/tags">Tags</NavLink>
+                    </nav>
+                    <Search options={["Europa", "Asien", "Asia", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "z", "aa", "bb", "cc", "dd", "ee", "ff", "gg", "hh", "ii", "jj", "kk", "ll", "mm", "nn", "oo", "pp", "qq", "rr", "ss", "tt", "uu", "vv", "ww", "zz"]} />
+                </header>
+                <Switch>
+                    <Route path="/tags"><ApiTags /></Route>
+                    <Route path="/"><Media /></Route>
+                </Switch>
+            </div>
+        </BrowserRouter>
+    );
 }
 
 export default App;
