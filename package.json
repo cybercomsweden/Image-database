@@ -7,7 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "parcel": "parcel",
     "watch": "parcel watch gui/index.jsx --public-url /static/",
-    "lint": "eslint --ext js,jsx gui"
+    "lint": "eslint --ext js,jsx gui",
+    "fmt": "eslint --ext js,jsx --fix gui"
   },
   "repository": {
     "type": "git",

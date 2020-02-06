@@ -44,6 +44,24 @@ module.exports = {
             "always-multiline",
         ],
         "react/prop-types": ["off"],
+        "max-classes-per-file": ["off"],
+
+        // Allows file extensions in import statements
+        "import/extensions": ["off"],
+
+        // Allow continue in loops
+        "no-continue": ["off"],
+
+        // Allow for (let x of y)
+        "no-restricted-syntax": [
+            "error",
+            "ForInStatement",
+            "LabeledStatement",
+            "WithStatement",
+        ],
+
+        // Allow passing children as prop since React Router uses it
+        "react/no-children-prop": ["off"],
     },
     "settings": {
         "react": {

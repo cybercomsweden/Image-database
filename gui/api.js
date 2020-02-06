@@ -1,7 +1,7 @@
-import Pbf from 'pbf';
-import {Entity, Entities} from '../src/entity.proto';
+import Pbf from "pbf";
+import { Entity, Entities } from "../src/entity.proto";
 
-async function _fetch(cls, resource, init) {
+async function fetchPb(cls, resource, init) {
     const rsp = await fetch(resource, init);
     const blob = await rsp.blob();
     const buf = await blob.arrayBuffer();
@@ -9,13 +9,13 @@ async function _fetch(cls, resource, init) {
 }
 
 
-Entities.fetch = async function() {
-    return await _fetch(Entities, "/api/media");
-}
+Entities.fetch = async function fetchEntities() {
+    return fetchPb(Entities, "/api/media");
+};
 
-Entity.fetch = async function(id) {
-    return await _fetch(Entity, `/api/media/${id}`);
-}
+Entity.fetch = async function fetchEntity(id) {
+    return fetchPb(Entity, `/api/media/${id}`);
+};
 
 
 export {
