@@ -11,6 +11,9 @@ fi
 
 npx eslint --ext js,jsx --quiet gui/
 if [ $? -ne 0 ]; then
+    if [ $exit_code -ne 0 ]; then
+        echo
+    fi
     echo "JavaScript code is not properly formatted or contains lint errors 😑"
     echo "Please run 'npm run fmt' and fix all errors before committing 🙏"
     exit_code=1
