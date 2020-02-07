@@ -39,8 +39,6 @@ function createArrow(points) {
 }
 
 mapboxgl.accessToken = "pk.eyJ1IjoiYmFja2xvZyIsImEiOiJjazY3dWd5aTAxdWE3M2xxd251a2czeGFkIn0.8OLm6vH4B5aNnbIWnbYCUw";
-// Temporarily disable warning since component will have state later
-// eslint-disable-next-line react/prefer-stateless-function
 class Pic extends React.Component {
     constructor(props) {
         super(props);
@@ -84,6 +82,7 @@ class Pic extends React.Component {
                 </Link>
             );
         }
+        let map = null;
         let metadata = "";
         let width; let height; let flash; let formattedDate = "Metadata not available";
         const name = entity.path.replace("dest/", "");
@@ -102,47 +101,38 @@ class Pic extends React.Component {
                 metadata = (
                     <ul>
                         <li>
-                            <b>Filename:</b>
-                            {" "}
+                            <strong>Filename: </strong>
                             {name}
                         </li>
                         <li>
-                            <b>Created:</b>
-                            {" "}
+                            <strong>Created: </strong>
                             {formattedDate}
                         </li>
                         <li>
-                            <b>Width:</b>
-                            {" "}
+                            <strong>Width: </strong>
                             {width}
                         </li>
                         <li>
-                            <b>Height:</b>
-                            {" "}
+                            <strong>Height: </strong>
                             {height}
                         </li>
                         <li>
-                            <b>Aperture:</b>
-                            {" "}
+                            <strong>Aperture: </strong>
                             {entityMeta.metadata.image.aperture.toFixed(1)}
                         </li>
                         <li>
-                            <b>ISO:</b>
-                            {" "}
+                            <strong>ISO: </strong>
                             {entityMeta.metadata.image.iso}
                         </li>
                         <li>
-                            <b>Flash:</b>
-                            {" "}
+                            <strong>Flash: </strong>
                             {flash}
                         </li>
                         <li>
-                            <b>Location:</b>
-                            {" "}
+                            <strong>Location: </strong>
                             {entityMeta.location.longitude.toFixed(1)}
                             ,
                             {entityMeta.location.latitude.toFixed(1)}
-                            {" "}
                             {entityMeta.location.place}
                         </li>
                     </ul>
@@ -154,37 +144,30 @@ class Pic extends React.Component {
                 metadata = (
                     <ul>
                         <li>
-                            <b>Filename:</b>
-                            {" "}
+                            <strong>Filename: </strong>
                             {name}
                         </li>
                         <li>
-                            <b>Created:</b>
-                            {" "}
+                            <strong>Created: </strong>
                             {formattedDate}
                         </li>
                         <li>
-                            <b>Width:</b>
-                            {" "}
+                            <strong>Width: </strong>
                             {width}
                         </li>
                         <li>
-                            <b>Height:</b>
-                            {" "}
+                            <strong>Height: </strong>
                             {height}
                         </li>
                         <li>
-                            <b>Duration:</b>
-                            {" "}
+                            <strong>Duration: </strong>
                             {entityMeta.metadata.video.duration.toFixed(1)}
-                            {" "}
-                            seconds
+                            {" seconds"}
                         </li>
                         <li>
-                            <b>Location:</b>
-                            {" "}
+                            <strong>Location: </strong>
                             {entityMeta.location.longitude.toFixed(1)}
-                            ,
+                            {", "}
                             {entityMeta.location.latitude.toFixed(1)}
                             {" "}
                             {entityMeta.location.place}
@@ -195,14 +178,19 @@ class Pic extends React.Component {
                 metadata = (
                     <ul>
                         <li>
-                            <b>Filename:</b>
-                            {" "}
+                            <strong>Filename:</strong>
                             {name}
                         </li>
                     </ul>
                 );
             }
+            const { location } = entityMeta;
+            if (location && (location.latitude || location.longitude)) {
+                map = <Map lng={location.longitude} lat={location.latitude} zoom="10" />;
+            }
         }
+
+
         return (
             <div className="preview-container">
                 <div className="preview-media">
@@ -218,6 +206,7 @@ class Pic extends React.Component {
                 </div>
                 <div className="preview-meta">
                     {metadata}
+                    {map}
                 </div>
             </div>
         );
@@ -333,6 +322,26 @@ class ApiTags extends React.Component {
                 {tags}
             </div>
         );
+    }
+}
+
+class Map extends React.Component {
+    componentDidMount() {
+        // TODO: Delete on umount
+        const { lng, lat, zoom } = this.props;
+        this.map = new mapboxgl.Map({
+            container: this.container,
+            style: "mapbox://styles/mapbox/streets-v11",
+            center: [lng, lat],
+            zoom,
+        });
+    }
+
+    render() {
+        const style = {
+            height: "400px",
+        };
+        return <div ref={(el) => { this.container = el; }} style={style} />;
     }
 }
 
@@ -485,12 +494,6 @@ class WorldMap extends React.Component {
     }
 }
 
-function Map() {
-    return (
-        <WorldMap />
-    );
-}
-
 function App() {
     return (
         <BrowserRouter>
@@ -505,7 +508,7 @@ function App() {
                 </header>
                 <Switch>
                     <Route path="/tags"><ApiTags /></Route>
-                    <Route path="/map"><Map /></Route>
+                    <Route path="/map"><WorldMap /></Route>
                     <Route path="/"><Media /></Route>
                 </Switch>
             </div>
