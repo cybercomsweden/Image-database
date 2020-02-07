@@ -21,6 +21,23 @@ function getFormattedDate(timestamp) {
     return `${year}-${month}-${day} ${hours}:${minutes.substr(-2)}:${seconds.substr(-2)}`;
 }
 
+function createArrow(points) {
+    return (
+        <button className="arrow left" type="submit">
+            <svg width="60px" height="80px" viewBox="0 0 50 80">
+                <polyline
+                    fill="none"
+                    stroke="#FFFFFF"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    points={points}
+                />
+            </svg>
+        </button>
+    );
+}
+
 mapboxgl.accessToken = "pk.eyJ1IjoiYmFja2xvZyIsImEiOiJjazY3dWd5aTAxdWE3M2xxd251a2czeGFkIn0.8OLm6vH4B5aNnbIWnbYCUw";
 // Temporarily disable warning since component will have state later
 // eslint-disable-next-line react/prefer-stateless-function
@@ -55,18 +72,7 @@ class Pic extends React.Component {
         if (prevEntity != null) {
             prev = (
                 <Link className="prev" to={`/media/${prevEntity.id}`}>
-                    <button className="arrow left" type="submit">
-                        <svg width="60px" height="80px" viewBox="0 0 50 80">
-                            <polyline
-                                fill="none"
-                                stroke="#FFFFFF"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                points="46.0,75.0 1.0,37.5 46.0,0.0"
-                            />
-                        </svg>
-                    </button>
+                    {createArrow("46.0,75.0 1.0,37.5 46.0,0.0")}
                 </Link>
             );
         }
@@ -74,23 +80,12 @@ class Pic extends React.Component {
         if (nextEntity != null) {
             next = (
                 <Link className="next" to={`/media/${nextEntity.id}`}>
-                    <button className="arrow right" type="submit">
-                        <svg width="60px" height="80px" viewBox="0 0 50 80">
-                            <polyline
-                                fill="none"
-                                stroke="#FFFFFF"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                points="0.0,75.0 37.5,37.5 0.0,0.0"
-                            />
-                        </svg>
-                    </button>
+                    {createArrow("0.0,75.0 37.5,37.5 0.0,0.0")}
                 </Link>
             );
         }
         let metadata = "";
-        let width; let height; let aperture; let iso; let flash; let duration; let place; let long; let lat; let formattedDate = "Metadata not available";
+        let width; let height; let flash; let formattedDate = "Metadata not available";
         const name = entity.path.replace("dest/", "");
         if (entityMeta != null) {
             width = entityMeta.metadata.width;
@@ -99,16 +94,11 @@ class Pic extends React.Component {
                 if (entityMeta.created.seconds > 0) {
                     formattedDate = getFormattedDate(entityMeta.created.seconds);
                 }
-                aperture = entityMeta.metadata.image.aperture;
-                iso = entityMeta.metadata.image.iso;
                 if (entityMeta.metadata.image.flash) {
                     flash = "Yes";
                 } else {
                     flash = "No";
                 }
-                place = entityMeta.location.place;
-                long = entityMeta.location.longitude;
-                lat = entityMeta.location.latitude;
                 metadata = (
                     <ul>
                         <li>
@@ -134,12 +124,12 @@ class Pic extends React.Component {
                         <li>
                             <b>Aperture:</b>
                             {" "}
-                            {aperture.toFixed(1)}
+                            {entityMeta.metadata.image.aperture.toFixed(1)}
                         </li>
                         <li>
                             <b>ISO:</b>
                             {" "}
-                            {iso}
+                            {entityMeta.metadata.image.iso}
                         </li>
                         <li>
                             <b>Flash:</b>
@@ -149,11 +139,11 @@ class Pic extends React.Component {
                         <li>
                             <b>Location:</b>
                             {" "}
-                            {long.toFixed(1)}
+                            {entityMeta.location.longitude.toFixed(1)}
                             ,
-                            {lat.toFixed(1)}
+                            {entityMeta.location.latitude.toFixed(1)}
                             {" "}
-                            {place}
+                            {entityMeta.location.place}
                         </li>
                     </ul>
                 );
@@ -161,10 +151,6 @@ class Pic extends React.Component {
                 if (entityMeta.created.seconds > 0) {
                     formattedDate = getFormattedDate(entityMeta.created.seconds);
                 }
-                place = entityMeta.location.place;
-                long = entityMeta.location.longitude;
-                lat = entityMeta.location.latitude;
-                duration = entityMeta.metadata.video.duration;
                 metadata = (
                     <ul>
                         <li>
@@ -190,18 +176,18 @@ class Pic extends React.Component {
                         <li>
                             <b>Duration:</b>
                             {" "}
-                            {duration.toFixed(1)}
+                            {entityMeta.metadata.video.duration.toFixed(1)}
                             {" "}
                             seconds
                         </li>
                         <li>
                             <b>Location:</b>
                             {" "}
-                            {long.toFixed(1)}
+                            {entityMeta.location.longitude.toFixed(1)}
                             ,
-                            {lat.toFixed(1)}
+                            {entityMeta.location.latitude.toFixed(1)}
                             {" "}
-                            {place}
+                            {entityMeta.location.place}
                         </li>
                     </ul>
                 );
