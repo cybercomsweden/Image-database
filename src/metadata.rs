@@ -14,14 +14,14 @@ use crate::coord::Location;
 
 #[derive(Clone, Debug)]
 pub struct Metadata {
-    width: u32,
-    height: u32,
-    date_time: Option<NaiveDateTime>,
-    exposure_time: Option<Fraction>,
-    aperture: Option<f32>,
-    iso: Option<u32>,
-    flash: Option<bool>,
-    gps_location: Option<Location>,
+    pub width: u32,
+    pub height: u32,
+    pub date_time: Option<NaiveDateTime>,
+    pub exposure_time: Option<Fraction>,
+    pub aperture: Option<f32>,
+    pub iso: Option<u32>,
+    pub flash: Option<bool>,
+    pub gps_location: Option<Location>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

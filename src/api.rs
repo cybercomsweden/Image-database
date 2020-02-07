@@ -5,8 +5,11 @@ use std::convert::TryInto;
 use tokio_postgres::{Client, Row};
 
 use crate::error::{Error, Result};
+use crate::metadata::{extract_metadata_image_jpg, extract_metadata_video};
 use crate::model::Entity as DbEntity;
+use crate::model::EntityType as DbEntityType;
 use crate::model::Tag as DbTag;
+use crate::thumbnail::{file_type_from_path, FileType, MediaType};
 include!(concat!(env!("OUT_DIR"), "/api.rs"));
 
 impl TryFrom<DbEntity> for Entity {
@@ -14,8 +17,11 @@ impl TryFrom<DbEntity> for Entity {
     fn try_from(db_entity: DbEntity) -> Result<Entity> {
         let mut entity = Entity::default();
         entity.id = db_entity.id.try_into()?;
-        //TODO: add media type
-        //entity.media_type = row.try_get::<_, Entity::EntityType>("media_type");
+        let media_type = match db_entity.media_type {
+            DbEntityType::Image => entity::EntityType::Image as i32,
+            DbEntityType::Video => entity::EntityType::Video as i32,
+        };
+        entity.media_type = media_type;
         entity.path = db_entity
             .path
             .to_str()
@@ -48,6 +54,67 @@ impl Entities {
     pub fn add(&mut self, entity: Entity) {
         self.entity.push(entity);
     }
+}
+
+pub fn create_entity_with_metadata(db_entity: DbEntity) -> crate::error::Result<Entity> {
+    let mut pb_entity = Entity::try_from(db_entity)?;
+    let path = &pb_entity.path;
+    let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
+    let mut pb_metadata = Metadata::default();
+    if file_type == FileType::Jpeg {
+        let metadata = extract_metadata_image_jpg(&path)?;
+        let mut location = entity::Location::default();
+        if let Some(v) = metadata.gps_location {
+            location.latitude = v.latitude;
+            location.longitude = v.longitude;
+            location.place = v.place;
+        }
+        pb_entity.location = Some(location);
+        let mut created = Timestamp::default();
+        if let Some(v) = metadata.date_time {
+            created.seconds = v.timestamp();
+            created.nanos = v.timestamp_subsec_nanos().try_into()?;
+        }
+        pb_entity.created = Some(created);
+        pb_metadata.width = metadata.width;
+        pb_metadata.height = metadata.height;
+        //TODO: fix exposure_time(also in proto file)
+        let mut image_metadata = metadata::Image::default();
+        if let Some(v) = metadata.aperture {
+            image_metadata.aperture = v.into();
+        }
+        if let Some(v) = metadata.iso {
+            image_metadata.iso = v;
+        }
+        if let Some(v) = metadata.flash {
+            image_metadata.flash = v;
+        }
+        pb_metadata.type_specific = Some(metadata::TypeSpecific::Image(image_metadata));
+    } else if file_type.media_type() == MediaType::Video {
+        let metadata = extract_metadata_video(&path)?;
+        let mut location = entity::Location::default();
+        if let Some(v) = metadata.gps_location {
+            location.latitude = v.latitude;
+            location.longitude = v.longitude;
+            location.place = v.place;
+        }
+        pb_entity.location = Some(location);
+        let mut created = Timestamp::default();
+        if let Some(v) = metadata.date_time {
+            created.seconds = v.timestamp();
+            created.nanos = v.timestamp_subsec_nanos().try_into()?;
+        }
+        pb_entity.created = Some(created);
+        pb_metadata.width = metadata.width;
+        pb_metadata.height = metadata.height;
+        let mut video_metadata = metadata::Video::default();
+        video_metadata.duration = metadata.duration.into();
+        pb_metadata.type_specific = Some(metadata::TypeSpecific::Video(video_metadata));
+        //TODO: add rotation and frame rate
+    }
+    pb_entity.metadata = Some(pb_metadata);
+
+    Ok(pb_entity)
 }
 
 impl TryFrom<DbTag> for Tag {

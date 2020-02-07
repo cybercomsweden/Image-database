@@ -16,8 +16,33 @@ message Timestamp {
   int32 nanos = 2;
 }
 
-message Entities {
-    repeated Entity entity = 1;
+message Metadata {
+    uint32 width = 1;
+    uint32 height = 2;
+    oneof type_specific {
+        Image image = 3;
+        Video video = 4;
+    }
+
+    message Image {
+        uint32 exposure_time = 1;
+        double aperture = 2;
+        uint32 iso = 3;
+        bool flash = 4;
+    }
+
+    message Video {
+        double duration = 1;
+        Rotation rotation = 2;
+        double frame_rate = 3;
+    }
+
+    enum Rotation {
+        Zero = 0;
+        Cw90 = 1;
+        Ccw90 = 2;
+        Cw180 = 3;
+    }
 }
 
 message Entity {
@@ -27,19 +52,25 @@ message Entity {
     string thumbnail_path = 4;
     string preview_path = 5;
     Timestamp uploaded = 6;
+    Location location = 7;
+    Timestamp created = 8;
 
-    Timestamp created = 7;
-    Location location = 8;
+    Metadata metadata = 9;
+
+    message Location {
+        double longitude = 1;
+        double latitude = 2;
+        string place = 3;
+    }
 
     enum EntityType {
         IMAGE = 0;
         VIDEO = 1;
     }
+}
 
-    message Location {
-        double longitude = 1;
-        double latitude = 2;
-    }
+message Entities {
+    repeated Entity entity = 1;
 }
 
 message Tags {

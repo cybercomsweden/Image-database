@@ -96,8 +96,8 @@ async fn get_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<im
         .await
         .ok_or(anyhow!("Entity {} not mapped yet", eid))?;
     let mut buf_mut = Vec::new();
-    let entity_pb = api::Entity::try_from(entity)?;
-    entity_pb.encode(&mut buf_mut)?;
+    let pb_entity = api::create_entity_with_metadata(entity)?;
+    pb_entity.encode(&mut buf_mut)?;
 
     Ok(HttpResponse::Ok()
         .content_type("application/protobuf")
@@ -220,9 +220,15 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             }
         };
 
+        let file_type = file_type_from_path(path).ok_or(anyhow!("Unknown file type"))?;
+        let media_type = match file_type.media_type() {
+            MediaType::Image | MediaType::RawImage => EntityType::Image,
+            MediaType::Video => EntityType::Video,
+        };
+
         let entity = Entity::insert(
             &client,
-            EntityType::Image,
+            media_type,
             &img,
             &thumbnail,
             &preview,

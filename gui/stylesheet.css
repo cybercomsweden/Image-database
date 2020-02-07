@@ -89,7 +89,11 @@ header {
     position: relative;
 }
 
-.preview_div {
+.preview-container {
+    position: relative;
+}
+
+.preview-media {
     background-color: black;
     position: relative;
 }

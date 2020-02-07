@@ -4,14 +4,53 @@ import {
     BrowserRouter, Link, NavLink, Route, Switch,
 } from "react-router-dom";
 import { Search } from "./search.jsx";
-import { Entities, Tags } from "./api.js";
+import { Entity, Entities, Tags } from "./api.js";
+
+function getFormattedDate(timestamp) {
+    const date = new Date(timestamp * 1000);
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    let hours = date.getHours();
+    const minutes = `0${date.getMinutes()}`;
+    const seconds = `0${date.getSeconds()}`;
+    const timezoneOffset = date.getTimezoneOffset();
+    if (timezoneOffset !== 0) {
+        hours += timezoneOffset / 60;
+    }
+    return `${year}-${month}-${day} ${hours}:${minutes.substr(-2)}:${seconds.substr(-2)}`;
+}
 
 mapboxgl.accessToken = "pk.eyJ1IjoiYmFja2xvZyIsImEiOiJjazY3dWd5aTAxdWE3M2xxd251a2czeGFkIn0.8OLm6vH4B5aNnbIWnbYCUw";
 // Temporarily disable warning since component will have state later
 // eslint-disable-next-line react/prefer-stateless-function
 class Pic extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            entity: null,
+        };
+    }
+
+    componentDidMount() {
+        this.getEntity();
+    }
+
+    componentDidUpdate(previousProps) {
+        const { entity } = this.props;
+        if (previousProps.entity.id !== entity.id) {
+            this.getEntity();
+        }
+    }
+
+    async getEntity() {
+        const { entity } = this.props;
+        this.setState({ entity: await Entity.fetch(entity.id) });
+    }
+
     render() {
         const { entity, prevEntity, nextEntity } = this.props;
+        const { entity: entityMeta } = this.state;
         let prev = "";
         if (prevEntity != null) {
             prev = (
@@ -50,17 +89,150 @@ class Pic extends React.Component {
                 </Link>
             );
         }
+        let metadata = "";
+        let width; let height; let aperture; let iso; let flash; let duration; let place; let long; let lat; let formattedDate = "Metadata not available";
+        const name = entity.path.replace("dest/", "");
+        if (entityMeta != null) {
+            width = entityMeta.metadata.width;
+            height = entityMeta.metadata.height;
+            if (entityMeta.metadata.image != null) {
+                if (entityMeta.created.seconds > 0) {
+                    formattedDate = getFormattedDate(entityMeta.created.seconds);
+                }
+                aperture = entityMeta.metadata.image.aperture;
+                iso = entityMeta.metadata.image.iso;
+                if (entityMeta.metadata.image.flash) {
+                    flash = "Yes";
+                } else {
+                    flash = "No";
+                }
+                place = entityMeta.location.place;
+                long = entityMeta.location.longitude;
+                lat = entityMeta.location.latitude;
+                metadata = (
+                    <ul>
+                        <li>
+                            <b>Filename:</b>
+                            {" "}
+                            {name}
+                        </li>
+                        <li>
+                            <b>Created:</b>
+                            {" "}
+                            {formattedDate}
+                        </li>
+                        <li>
+                            <b>Width:</b>
+                            {" "}
+                            {width}
+                        </li>
+                        <li>
+                            <b>Height:</b>
+                            {" "}
+                            {height}
+                        </li>
+                        <li>
+                            <b>Aperture:</b>
+                            {" "}
+                            {aperture.toFixed(1)}
+                        </li>
+                        <li>
+                            <b>ISO:</b>
+                            {" "}
+                            {iso}
+                        </li>
+                        <li>
+                            <b>Flash:</b>
+                            {" "}
+                            {flash}
+                        </li>
+                        <li>
+                            <b>Location:</b>
+                            {" "}
+                            {long.toFixed(1)}
+                            ,
+                            {lat.toFixed(1)}
+                            {" "}
+                            {place}
+                        </li>
+                    </ul>
+                );
+            } else if (entityMeta.metadata.type_specific === "video") {
+                if (entityMeta.created.seconds > 0) {
+                    formattedDate = getFormattedDate(entityMeta.created.seconds);
+                }
+                place = entityMeta.location.place;
+                long = entityMeta.location.longitude;
+                lat = entityMeta.location.latitude;
+                duration = entityMeta.metadata.video.duration;
+                metadata = (
+                    <ul>
+                        <li>
+                            <b>Filename:</b>
+                            {" "}
+                            {name}
+                        </li>
+                        <li>
+                            <b>Created:</b>
+                            {" "}
+                            {formattedDate}
+                        </li>
+                        <li>
+                            <b>Width:</b>
+                            {" "}
+                            {width}
+                        </li>
+                        <li>
+                            <b>Height:</b>
+                            {" "}
+                            {height}
+                        </li>
+                        <li>
+                            <b>Duration:</b>
+                            {" "}
+                            {duration.toFixed(1)}
+                            {" "}
+                            seconds
+                        </li>
+                        <li>
+                            <b>Location:</b>
+                            {" "}
+                            {long.toFixed(1)}
+                            ,
+                            {lat.toFixed(1)}
+                            {" "}
+                            {place}
+                        </li>
+                    </ul>
+                );
+            } else {
+                metadata = (
+                    <ul>
+                        <li>
+                            <b>Filename:</b>
+                            {" "}
+                            {name}
+                        </li>
+                    </ul>
+                );
+            }
+        }
         return (
-            <div className="preview_div">
-                <Link className="close" to="/">
-                    <svg width="20px" height="20px">
-                        <line x1="2" y1="2" x2="20" y2="20" stroke="white" strokeWidth="2" />
-                        <line x1="20" y1="2" x2="2" y2="20" stroke="white" strokeWidth="2" />
-                    </svg>
-                </Link>
-                {prev}
-                <img className="preview" src={`/assets/${entity.preview_path}`} alt="" />
-                {next}
+            <div className="preview-container">
+                <div className="preview-media">
+                    <Link className="close" to="/">
+                        <svg width="20px" height="20px">
+                            <line x1="2" y1="2" x2="20" y2="20" stroke="white" strokeWidth="2" />
+                            <line x1="20" y1="2" x2="2" y2="20" stroke="white" strokeWidth="2" />
+                        </svg>
+                    </Link>
+                    {prev}
+                    <img className="preview" src={`/assets/${entity.preview_path}`} alt="" />
+                    {next}
+                </div>
+                <div className="preview-meta">
+                    {metadata}
+                </div>
             </div>
         );
     }
