@@ -3,6 +3,7 @@ use actix_web::{middleware::Logger, web, App, HttpRequest, HttpResponse, HttpSer
 use anyhow::anyhow;
 use async_std::fs::File as AsyncFile;
 use async_std::io::ReadExt;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::{FutureExt, StreamExt};
 use prost::Message;
 use sha3::digest::Digest;
@@ -220,11 +221,31 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             }
         };
 
-        let file_type = file_type_from_path(path).ok_or(anyhow!("Unknown file type"))?;
+        let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
         let media_type = match file_type.media_type() {
             MediaType::Image | MediaType::RawImage => EntityType::Image,
             MediaType::Video => EntityType::Video,
         };
+
+        let mut created = None;
+        let mut location = None;
+        if file_type == FileType::Jpeg {
+            let image_metadata = extract_metadata_image_jpg(path)?;
+            if let Some(v) = image_metadata.date_time {
+                let date_created = DateTime::<Utc>::from_utc(v, Utc);
+                created = Some(date_created);
+            }
+            location = image_metadata.gps_location;
+        } else if media_type == EntityType::Video {
+            let video_metadata = extract_metadata_video(path)?;
+            if let Some(v) = video_metadata.date_time {
+                let timestamp = v.timestamp();
+                let naive = NaiveDateTime::from_timestamp(timestamp, 0);
+                let date_created = DateTime::<Utc>::from_utc(naive, Utc);
+                created = Some(date_created);
+            }
+            location = video_metadata.gps_location;
+        }
 
         let entity = Entity::insert(
             &client,
@@ -234,8 +255,8 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             &preview,
             metadata.len(),
             &sha3,
-            &None,
-            &None,
+            &created,
+            &location,
         )
         .await?;
         dbg!(entity);

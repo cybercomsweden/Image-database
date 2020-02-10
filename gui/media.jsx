@@ -99,14 +99,17 @@ class Pic extends React.Component {
         }
         let map = null;
         let metadata = "";
-        let width; let height; let flash; let formattedDate = "Metadata not available";
+        let width; let height; let flash; let formattedDate; let place;
         const name = entity.path.replace("dest/", "");
         let overlay = null;
         if (entityMeta != null) {
             width = entityMeta.metadata.width;
             height = entityMeta.metadata.height;
+            if (entityMeta.location != null) {
+                place = entityMeta.location.place;
+            }
             if (entityMeta.metadata.image != null) {
-                if (entityMeta.created.seconds > 0) {
+                if (entityMeta.created !== null && entityMeta.created.seconds > 0) {
                     formattedDate = getFormattedDate(entityMeta.created.seconds);
                 }
                 if (entityMeta.metadata.image.flash) {
@@ -131,7 +134,7 @@ class Pic extends React.Component {
                         <dt>Flash</dt>
                         <dd>{flash}</dd>
                         <dt>Location</dt>
-                        <dd>{entityMeta.location.place}</dd>
+                        <dd>{place}</dd>
                     </dl>
                 );
             } else if (entityMeta.metadata.type_specific === "video") {
@@ -164,11 +167,7 @@ class Pic extends React.Component {
                         </li>
                         <li>
                             <strong>Location: </strong>
-                            {entityMeta.location.longitude.toFixed(1)}
-                            {", "}
-                            {entityMeta.location.latitude.toFixed(1)}
-                            {" "}
-                            {entityMeta.location.place}
+                            {place}
                         </li>
                     </ul>
                 );

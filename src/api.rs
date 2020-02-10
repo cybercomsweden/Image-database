@@ -42,10 +42,19 @@ impl TryFrom<DbEntity> for Entity {
             seconds: uploaded.timestamp(),
             nanos: uploaded.timestamp_subsec_nanos().try_into()?,
         });
-        //TODO: add created and location
-        //let created = db_entity.created;
-        //entity.created = Some(Timestamp { seconds: created.timestamp(), nanos: created.timestamp_subsec_nanos().try_into()?});
-        //dbg!(db_entity.location);
+        if let Some(v) = db_entity.created {
+            entity.created = Some(Timestamp {
+                seconds: v.timestamp(),
+                nanos: v.timestamp_subsec_nanos().try_into()?,
+            });
+        }
+        if let Some(v) = db_entity.location {
+            let mut location = entity::Location::default();
+            location.latitude = v.latitude;
+            location.longitude = v.longitude;
+            location.place = v.place;
+            entity.location = Some(location);
+        }
         Ok(entity)
     }
 }
@@ -63,19 +72,6 @@ pub fn create_entity_with_metadata(db_entity: DbEntity) -> crate::error::Result<
     let mut pb_metadata = Metadata::default();
     if file_type == FileType::Jpeg {
         let metadata = extract_metadata_image_jpg(&path)?;
-        let mut location = entity::Location::default();
-        if let Some(v) = metadata.gps_location {
-            location.latitude = v.latitude;
-            location.longitude = v.longitude;
-            location.place = v.place;
-        }
-        pb_entity.location = Some(location);
-        let mut created = Timestamp::default();
-        if let Some(v) = metadata.date_time {
-            created.seconds = v.timestamp();
-            created.nanos = v.timestamp_subsec_nanos().try_into()?;
-        }
-        pb_entity.created = Some(created);
         pb_metadata.width = metadata.width;
         pb_metadata.height = metadata.height;
         //TODO: fix exposure_time(also in proto file)
@@ -92,19 +88,6 @@ pub fn create_entity_with_metadata(db_entity: DbEntity) -> crate::error::Result<
         pb_metadata.type_specific = Some(metadata::TypeSpecific::Image(image_metadata));
     } else if file_type.media_type() == MediaType::Video {
         let metadata = extract_metadata_video(&path)?;
-        let mut location = entity::Location::default();
-        if let Some(v) = metadata.gps_location {
-            location.latitude = v.latitude;
-            location.longitude = v.longitude;
-            location.place = v.place;
-        }
-        pb_entity.location = Some(location);
-        let mut created = Timestamp::default();
-        if let Some(v) = metadata.date_time {
-            created.seconds = v.timestamp();
-            created.nanos = v.timestamp_subsec_nanos().try_into()?;
-        }
-        pb_entity.created = Some(created);
         pb_metadata.width = metadata.width;
         pb_metadata.height = metadata.height;
         let mut video_metadata = metadata::Video::default();
