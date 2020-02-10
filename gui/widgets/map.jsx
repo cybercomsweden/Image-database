@@ -67,9 +67,6 @@ export class Map extends React.Component {
     }
 
     render() {
-        const style = {
-            height: "400px",
-        };
-        return <BaseMap mapRef={this.registerMapRef} style={style} />;
+        return <BaseMap mapRef={this.registerMapRef} {...this.props} />;
     }
 }

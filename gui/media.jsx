@@ -20,18 +20,16 @@ function getFormattedDate(timestamp) {
 
 function createArrow(points) {
     return (
-        <button className="arrow left" type="submit">
-            <svg width="60px" height="80px" viewBox="0 0 50 80">
-                <polyline
-                    fill="none"
-                    stroke="#FFFFFF"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    points={points}
-                />
-            </svg>
-        </button>
+        <svg className="chevron" width="50px" height="75px" viewBox="0 0 50 75">
+            <polyline
+                fill="none"
+                stroke="#FFFFFF"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={points}
+            />
+        </svg>
     );
 }
 
@@ -65,16 +63,16 @@ class Pic extends React.Component {
         let prev = "";
         if (prevEntity != null) {
             prev = (
-                <Link className="prev" to={`/media/${prevEntity.id}`}>
-                    {createArrow("46.0,75.0 1.0,37.5 46.0,0.0")}
+                <Link className="button prev" to={`/media/${prevEntity.id}`}>
+                    {createArrow("47,3 3,37.5 47,72")}
                 </Link>
             );
         }
         let next = "";
         if (nextEntity != null) {
             next = (
-                <Link className="next" to={`/media/${nextEntity.id}`}>
-                    {createArrow("0.0,75.0 37.5,37.5 0.0,0.0")}
+                <Link className="button next" to={`/media/${nextEntity.id}`}>
+                    {createArrow("3,3 47,37.5 1,72")}
                 </Link>
             );
         }
@@ -182,7 +180,7 @@ class Pic extends React.Component {
             }
             const { location } = entityMeta;
             if (location && (location.latitude || location.longitude)) {
-                map = <Map lng={location.longitude} lat={location.latitude} zoom="10" />;
+                map = <Map className="preview-map" lng={location.longitude} lat={location.latitude} zoom="10" />;
             }
         }
 
@@ -200,7 +198,7 @@ class Pic extends React.Component {
                     <img className="preview" src={`/assets/${entity.preview_path}`} alt="" />
                     {next}
                 </div>
-                <div className="preview-meta">
+                <div className="preview-metadata">
                     {metadata}
                     {map}
                 </div>
