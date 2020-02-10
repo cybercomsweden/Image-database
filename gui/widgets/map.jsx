@@ -1,6 +1,9 @@
 import React from "react";
 import mapboxgl from "mapbox-gl";
 
+// Ensure that Mapbox CSS gets bundled by Parcel
+import "mapbox-gl/src/css/mapbox-gl.css";
+
 mapboxgl.accessToken = "pk.eyJ1IjoiYmFja2xvZyIsImEiOiJjazY3dWd5aTAxdWE3M2xxd251a2czeGFkIn0.8OLm6vH4B5aNnbIWnbYCUw";
 
 export class BaseMap extends React.Component {
