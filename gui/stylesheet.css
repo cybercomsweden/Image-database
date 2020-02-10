@@ -61,6 +61,7 @@ body {
 .media-thumbnail {
   border-radius: 5px;
   overflow: hidden;
+  position: relative;
 }
 
 .media-thumbnail > img {
@@ -172,3 +173,58 @@ ul.options li {
   background-color:#f8a500;
   display: inline;
 }
+
+.video-overlay-play-button {
+  position: absolute;
+  display: block;
+  top: calc(50% - 37.5px);
+  left: calc(50% - 37.5px);
+
+  transition: all 0.5s ease;
+}
+
+.circle {
+  stroke: #f8aa28;
+  stroke-dasharray: 650;
+  stroke-dashoffset: 650;
+  transition: all 0.5s ease-in-out;
+  opacity: 0.3;
+}
+
+@keyframes nudge{
+     0% {
+       transform: translateX(0)
+     }
+     30% {
+       transform: translateX(-5px)
+     }
+     50% {
+       transform: translateX(5px)
+     }
+     70% {
+       transform: translateX(-2px)
+     }
+     100% {
+       transform: translateX(0)
+     }
+   }
+
+.video-overlay-play-button .triangle {
+    transition: all 0.7s ease-in-out;
+    stroke-dasharray: 240;
+    stroke-dashoffset: 480;
+    stroke: #fff;
+    transform: translateY(0)
+  }
+
+  .video-overlay-play-button:hover .triangle {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    stroke: #f8aa28;
+    animation: nudge 0.7s ease-in-out;
+
+  }
+  .video-overlay-play-button:hover .circle {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }

@@ -125,8 +125,9 @@ class Pic extends React.Component {
                         <li>
                             <strong>Location: </strong>
                             {entityMeta.location.longitude.toFixed(1)}
-                            ,
+                            {", "}
                             {entityMeta.location.latitude.toFixed(1)}
+                            {" "}
                             {entityMeta.location.place}
                         </li>
                     </ul>
@@ -211,9 +212,19 @@ function MediaList({ entities }) {
     const entityLinks = [];
     if (entities != null) {
         for (const entity of entities) {
+            let overlayCircle = null;
+            if (entity.media_type === 1) {
+                overlayCircle = (
+                    <svg className="video-overlay-play-button" width="75px" height="75" viewBox="0 0 213.7 213.7" enableBackground="new 0 0 213.7 213.7">
+                        <polygon className="triangle" id="XMLID_18_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" points="73.5,62.5 148.5,105.8 73.5,149.1 " />
+                        <circle className="circle" id="XMLID_17_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" cx="106.8" cy="106.8" r="103.3" />
+                    </svg>
+                );
+            }
             entityLinks.push(
                 <Link className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
                     <img src={`/assets/${entity.thumbnail_path}`} alt="" />
+                    {overlayCircle}
                 </Link>,
             );
         }
