@@ -18,13 +18,24 @@ function getFormattedDate(timestamp) {
     return `${year}-${month}-${day} ${hours}:${minutes.substr(-2)}:${seconds.substr(-2)}`;
 }
 
-function createArrow(points) {
+function Chevron(props) {
+    const { dir, ...other } = props;
+
+    let points = null;
+    if (dir === "left") {
+        points = "47,3 3,37.5 47,72";
+    } else if (dir === "right") {
+        points = "3,3 47,37.5 1,72";
+    } else {
+        throw new Error("Cheron dir attribute must be either 'left' or 'right'");
+    }
+
     return (
-        <svg className="chevron" width="50px" height="75px" viewBox="0 0 50 75">
+        <svg className="chevron" width="50px" height="75px" viewBox="0 0 50 75" {...other}>
             <polyline
                 fill="none"
                 stroke="#FFFFFF"
-                strokeWidth="3"
+                strokeWidth="4"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 points={points}
@@ -64,7 +75,7 @@ class Pic extends React.Component {
         if (prevEntity != null) {
             prev = (
                 <Link className="button prev" to={`/media/${prevEntity.id}`}>
-                    {createArrow("47,3 3,37.5 47,72")}
+                    <Chevron dir="left" />
                 </Link>
             );
         }
@@ -72,7 +83,7 @@ class Pic extends React.Component {
         if (nextEntity != null) {
             next = (
                 <Link className="button next" to={`/media/${nextEntity.id}`}>
-                    {createArrow("3,3 47,37.5 1,72")}
+                    <Chevron dir="right" />
                 </Link>
             );
         }
