@@ -138,6 +138,10 @@ export class WorldMap extends BaseMap {
         });
     }
 
+    componentWillUnmount() {
+        BaseMap.prototype.componentWillUnmount.call(this);
+    }
+
     render() {
         return (
             <div>

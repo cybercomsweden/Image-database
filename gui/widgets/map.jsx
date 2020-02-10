@@ -18,7 +18,8 @@ export class BaseMap extends React.Component {
     }
 
     componentWillUnmount() {
-        if (this.map != null) {
+        // NOTE: This will not run for subclasses
+        if (this.map !== null) {
             this.map.remove();
             this.map = null;
         }
@@ -36,11 +37,15 @@ export class Map extends React.Component {
     }
 
     componentDidUpdate({ lng: prevLng, lat: prevLat, zoom: prevZoom }) {
-        const { lng, lat, zoom } = this;
+        const { lng, lat, zoom } = this.props;
         if (prevLng !== lng || prevLat !== lat || prevZoom !== zoom) {
             this.map.setZoom(zoom);
             this.map.setCenter([lng, lat]);
         }
+    }
+
+    componentWillUnmount() {
+        BaseMap.prototype.componentWillUnmount.call(this);
     }
 
     render() {
