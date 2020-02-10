@@ -4,35 +4,49 @@ import mapboxgl from "mapbox-gl";
 // Ensure that Mapbox CSS gets bundled by Parcel
 import "mapbox-gl/src/css/mapbox-gl.css";
 
-mapboxgl.accessToken = "pk.eyJ1IjoiYmFja2xvZyIsImEiOiJjazY3dWd5aTAxdWE3M2xxd251a2czeGFkIn0.8OLm6vH4B5aNnbIWnbYCUw";
 
 export class BaseMap extends React.Component {
+    constructor(props) {
+        super(props);
+        this.map = React.createRef();
+    }
+
     componentDidMount() {
-        if (!this.container) {
-            throw new Error(
-                "Unable to find this.container, you must define it in your render "
-                + "function using ref={(el) => { this.container = el; }}",
-            );
-        }
         this.map = new mapboxgl.Map({
             container: this.container,
             style: "mapbox://styles/mapbox/streets-v11",
+            accessToken: "pk.eyJ1IjoiYmFja2xvZyIsImEiOiJjazY3dWd5aTAxdWE3M2xxd251a2czeGFkIn0.8OLm6vH4B5aNnbIWnbYCUw",
         });
+
+        const { mapRef } = this.props;
+        if (mapRef) {
+            mapRef(this.map);
+        }
     }
 
     componentWillUnmount() {
-        // NOTE: This will not run for subclasses
         if (this.map !== null) {
+            if (this.mapRef) {
+                this.mapRef(null);
+            }
             this.map.remove();
             this.map = null;
         }
     }
+
+    render() {
+        const { mapRef, ...attrs } = this.props;
+        return <div ref={(el) => { this.container = el; }} {...attrs} />;
+    }
 }
 
 export class Map extends React.Component {
-    componentDidMount() {
-        BaseMap.prototype.componentDidMount.call(this);
+    constructor(props) {
+        super(props);
+        this.registerMapRef = this.registerMapRef.bind(this);
+    }
 
+    componentDidMount() {
         // NOTE: We must zoom before setCenter or the coordinates will be wrong
         const { lng, lat, zoom } = this.props;
         this.map.setZoom(zoom);
@@ -47,14 +61,15 @@ export class Map extends React.Component {
         }
     }
 
-    componentWillUnmount() {
-        BaseMap.prototype.componentWillUnmount.call(this);
+    registerMapRef(map) {
+        // We utilize that BaseMap.mapRef is called before this.componentDidMount is
+        this.map = map;
     }
 
     render() {
         const style = {
             height: "400px",
         };
-        return <div ref={(el) => { this.container = el; }} style={style} />;
+        return <BaseMap mapRef={this.registerMapRef} style={style} />;
     }
 }

@@ -64,6 +64,9 @@ module.exports = {
         "react/no-children-prop": ["off"],
 
         "import/prefer-default-export": ["off"],
+
+        // Allow <Component {...attrs />
+        "react/jsx-props-no-spreading": ["off"],
     },
     "settings": {
         "react": {

@@ -10,11 +10,15 @@ export class WorldMap extends BaseMap {
             lat: 30,
             zoom: 1.6,
         };
+        this.registerMapRef = this.registerMapRef.bind(this);
+    }
+
+    registerMapRef(map) {
+        // We utilize that BaseMap.mapRef is called before this.componentDidMount is
+        this.map = map;
     }
 
     componentDidMount() {
-        BaseMap.prototype.componentDidMount.call(this);
-
         // Override positions from <Map />
         const { lng, lat, zoom } = this.state;
         this.map.setCenter([lng, lat]);
@@ -138,14 +142,10 @@ export class WorldMap extends BaseMap {
         });
     }
 
-    componentWillUnmount() {
-        BaseMap.prototype.componentWillUnmount.call(this);
-    }
-
     render() {
         return (
             <div>
-                <div ref={(el) => { this.container = el; }} className="mapContainer" />
+                <BaseMap mapRef={this.registerMapRef} className="mapContainer" />
                 <div id="zoom" className="zoom">
                     <b><i>Zoom out</i></b>
                 </div>
