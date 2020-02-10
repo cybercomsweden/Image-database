@@ -2,7 +2,7 @@ import React from "react";
 import mapboxgl from "mapbox-gl";
 
 // Ensure that Mapbox CSS gets bundled by Parcel
-import "mapbox-gl/src/css/mapbox-gl.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 
 export class BaseMap extends React.Component {
