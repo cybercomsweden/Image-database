@@ -100,9 +100,11 @@ header {
     display: flex;
     background: white;
     border-radius: 0 0 5px 5px;
+    align-items: flex-start;
 }
 
 .preview-map {
+    align-self: stretch;
     flex-grow: 1;
 }
 
@@ -228,3 +230,19 @@ ul.options li {
     stroke-dashoffset: 0;
     opacity: 1;
   }
+
+.property-table {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto auto;
+}
+
+.property-table > * {
+    margin: 0;
+    padding: 8px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.property-table > :nth-child(odd) {
+    font-weight: bold;
+}

@@ -104,44 +104,24 @@ class Pic extends React.Component {
                     flash = "No";
                 }
                 metadata = (
-                    <ul>
-                        <li>
-                            <strong>Filename: </strong>
-                            {name}
-                        </li>
-                        <li>
-                            <strong>Created: </strong>
-                            {formattedDate}
-                        </li>
-                        <li>
-                            <strong>Width: </strong>
-                            {width}
-                        </li>
-                        <li>
-                            <strong>Height: </strong>
-                            {height}
-                        </li>
-                        <li>
-                            <strong>Aperture: </strong>
-                            {entityMeta.metadata.image.aperture.toFixed(1)}
-                        </li>
-                        <li>
-                            <strong>ISO: </strong>
-                            {entityMeta.metadata.image.iso}
-                        </li>
-                        <li>
-                            <strong>Flash: </strong>
-                            {flash}
-                        </li>
-                        <li>
-                            <strong>Location: </strong>
-                            {entityMeta.location.longitude.toFixed(1)}
-                            {", "}
-                            {entityMeta.location.latitude.toFixed(1)}
-                            {" "}
-                            {entityMeta.location.place}
-                        </li>
-                    </ul>
+                    <dl className="property-table">
+                        <dt>Filename</dt>
+                        <dd>{name}</dd>
+                        <dt>Created</dt>
+                        <dd>{formattedDate}</dd>
+                        <dt>Width</dt>
+                        <dd>{width}</dd>
+                        <dt>Height</dt>
+                        <dd>{height}</dd>
+                        <dt>Aperture</dt>
+                        <dd>{entityMeta.metadata.image.aperture.toFixed(1)}</dd>
+                        <dt>ISO</dt>
+                        <dd>{entityMeta.metadata.image.iso}</dd>
+                        <dt>Flash</dt>
+                        <dd>{flash}</dd>
+                        <dt>Location</dt>
+                        <dd>{entityMeta.location.place}</dd>
+                    </dl>
                 );
             } else if (entityMeta.metadata.type_specific === "video") {
                 if (entityMeta.created.seconds > 0) {
@@ -200,7 +180,7 @@ class Pic extends React.Component {
         return (
             <div className="preview-container">
                 <div className="preview-media">
-                    <Link className="close" to="/">
+                    <Link className="button close" to="/">
                         <svg width="20px" height="20px">
                             <line x1="2" y1="2" x2="20" y2="20" stroke="white" strokeWidth="2" />
                             <line x1="20" y1="2" x2="2" y2="20" stroke="white" strokeWidth="2" />
