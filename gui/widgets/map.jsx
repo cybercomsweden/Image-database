@@ -11,11 +11,17 @@ export class BaseMap extends React.Component {
                 + "function using ref={(el) => { this.container = el; }}",
             );
         }
-        // TODO: Delete on umount
         this.map = new mapboxgl.Map({
             container: this.container,
             style: "mapbox://styles/mapbox/streets-v11",
         });
+    }
+
+    componentWillUnmount() {
+        if (this.map != null) {
+            this.map.remove();
+            this.map = null;
+        }
     }
 }
 
@@ -27,6 +33,14 @@ export class Map extends React.Component {
         const { lng, lat, zoom } = this.props;
         this.map.setZoom(zoom);
         this.map.setCenter([lng, lat]);
+    }
+
+    componentDidUpdate({ lng: prevLng, lat: prevLat, zoom: prevZoom }) {
+        const { lng, lat, zoom } = this;
+        if (prevLng !== lng || prevLat !== lat || prevZoom !== zoom) {
+            this.map.setZoom(zoom);
+            this.map.setCenter([lng, lat]);
+        }
     }
 
     render() {
