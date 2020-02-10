@@ -62,6 +62,8 @@ module.exports = {
 
         // Allow passing children as prop since React Router uses it
         "react/no-children-prop": ["off"],
+
+        "import/prefer-default-export": ["off"],
     },
     "settings": {
         "react": {

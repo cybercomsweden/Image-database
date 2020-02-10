@@ -1,5 +1,5 @@
 import React from "react";
-import { AutocompleteTags } from "./api.js";
+import { AutocompleteTags } from "../api.js";
 
 export class Search extends React.Component {
     constructor(props) {

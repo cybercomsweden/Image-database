@@ -1,10 +1,7 @@
 import React from "react";
-import {
-    BrowserRouter, Link, NavLink, Route, Switch,
-} from "react-router-dom";
-import { Search } from "./search.jsx";
-import { Entity, Entities, Tags } from "./api.js";
-import { Map, WorldMap } from "./map.jsx";
+import { Link, Route, Switch } from "react-router-dom";
+import { Entity, Entities } from "./api.js";
+import { Map } from "./widgets/map.jsx";
 
 function getFormattedDate(timestamp) {
     const date = new Date(timestamp * 1000);
@@ -230,7 +227,7 @@ function MediaList({ entities }) {
     );
 }
 
-class Media extends React.Component {
+export class Media extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
@@ -287,63 +284,3 @@ class Media extends React.Component {
         );
     }
 }
-
-class ApiTags extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            tags: null,
-        };
-    }
-
-    componentDidMount() {
-        this.getTags();
-    }
-
-    async getTags() {
-        this.setState({ tags: await Tags.fetch() });
-    }
-
-    render() {
-        const { tags: tagsPb } = this.state;
-        if (tagsPb === null) {
-            return "Loading";
-        }
-        if (!tagsPb.tag.length) {
-            return "No tags yet";
-        }
-        const tags = [];
-        for (const tag of tagsPb.tag) {
-            tags.push(<div key={tag.id}>{tag.canonical_name}</div>);
-        }
-        return (
-            <div className="tag-list">
-                {tags}
-            </div>
-        );
-    }
-}
-
-function App() {
-    return (
-        <BrowserRouter>
-            <div className="content">
-                <header>
-                    <nav>
-                        <NavLink to="/" isActive={(match, location) => location.pathname === "/" || location.pathname.match(/^\/media\//) !== null}>Media</NavLink>
-                        <NavLink to="/tags">Tags</NavLink>
-                        <NavLink to="/map">Map</NavLink>
-                    </nav>
-                    <Search />
-                </header>
-                <Switch>
-                    <Route path="/tags"><ApiTags /></Route>
-                    <Route path="/map"><WorldMap /></Route>
-                    <Route path="/"><Media /></Route>
-                </Switch>
-            </div>
-        </BrowserRouter>
-    );
-}
-
-export default App;
