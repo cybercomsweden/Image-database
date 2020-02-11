@@ -1,13 +1,16 @@
 import React from "react";
+import {
+    withRouter,
+} from "react-router-dom";
+import queryString from "query-string";
 import { AutocompleteTags } from "../api.js";
 
-export class Search extends React.Component {
+class InnerSearch extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             userInput: "",
             options: null,
-            filteredOptions: null,
             showOptions: false,
             activeOption: 0,
             prevOption: 0,
@@ -20,28 +23,31 @@ export class Search extends React.Component {
 
     componentDidMount() {
         this.getTags();
+        this.updateUserInput();
+    }
+
+    componentDidUpdate() {
+        this.updateUserInput();
     }
 
     onChange(event) {
         const userInput = event.target.value;
-        const userData = userInput.split(" ");
-        const filteredOptions = this.filterOptions(userData[userData.length - 1]);
         this.setState({
             userInput,
-            filteredOptions,
-            activeOption: 0,
-            showOptions: true,
         });
     }
 
     onKeyDown(event) {
-        const { activeOption, filteredOptions, userInput } = this.state;
+        const { activeOption, userInput } = this.state;
+        const newInput = userInput.split(" ");
+        const filteredOptions = this.filterOptions(newInput);
         if (event.key === "Enter") {
-            const newInput = userInput.split(" ");
             newInput[newInput.length - 1] = filteredOptions[activeOption].canonical_name;
+            // Updating the url with the searched terms
+            const { history } = this.props;
+            history.push("/media?q=".concat(newInput.join("+")));
             this.setState({
                 activeOption: 0,
-                showOptions: false,
                 userInput: newInput.join(" "),
             });
         } else if (event.key === "ArrowUp") {
@@ -77,24 +83,40 @@ export class Search extends React.Component {
 
     async getTags() {
         const tags = await AutocompleteTags.fetch();
-        this.setState({ options: tags.tag, filteredOptions: tags.tag });
+        this.setState({ options: tags.tag });
+    }
+
+    updateUserInput() {
+        const { location } = this.props;
+        const newQ = queryString.parse(location.search).q;
+        const { showOptions, userInput } = this.state;
+        if (newQ && newQ !== userInput) {
+            if (!showOptions) {
+                this.setState({ userInput: newQ });
+            }
+        }
     }
 
     filterOptions(userData) {
-        const { options, userInput } = this.state;
+        const { options } = this.state;
         // TODO: Only filters on canonical name, will not work with åöä
+        if (!options) {
+            return [];
+        }
         const matches = options.filter(
-            (optionName) => optionName.canonical_name.indexOf(userData.toLowerCase()) > -1,
+            (optionName) => optionName.canonical_name
+                .indexOf(userData[userData.length - 1].toLowerCase()) > -1,
         );
         // Removes the tags that are already used from the list of suggested tags
-        return matches.filter((x) => !userInput.split(" ").includes(x.canonical_name));
+        return matches.filter((x) => !userData.includes(x.canonical_name));
     }
 
     render() {
         const {
-            activeOption, filteredOptions, showOptions, userInput,
+            activeOption, showOptions, userInput,
         } = this.state;
         let optionList;
+        const filteredOptions = this.filterOptions(userInput.split(" "));
         if (showOptions && filteredOptions.length) {
             optionList = (
                 <ul className="options">
@@ -131,4 +153,4 @@ export class Search extends React.Component {
     }
 }
 
-export default Search;
+export const Search = withRouter(InnerSearch);

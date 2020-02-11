@@ -157,6 +157,7 @@ async fn run_server(config: Config) -> Result<()> {
             .route("/tags", web::get().to(static_html))
             .route("/map", web::get().to(static_html))
             .route("/media/{id}", web::get().to(static_html))
+            .route("/media", web::get().to(static_html))
             .route("/assets/{path:.*}", web::get().to(show_media))
             .route("/static/{file}", web::get().to(static_file))
             .route("/api/media", web::get().to(list_from_database))

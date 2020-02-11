@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { Tags as ApiTags } from "./api.js";
 
 export class Tags extends React.Component {
@@ -27,7 +28,14 @@ export class Tags extends React.Component {
         }
         const tags = [];
         for (const tag of tagsPb.tag) {
-            tags.push(<div key={tag.id}>{tag.canonical_name}</div>);
+            const dest = "media?q=".concat(tag.canonical_name);
+            tags.push(
+                <Link key={tag.canonical_name} to={dest}>
+                    <div>
+                        {tag.canonical_name}
+                    </div>
+                </Link>,
+            );
         }
         return (
             <div className="tag-list">

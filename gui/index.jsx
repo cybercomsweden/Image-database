@@ -11,7 +11,7 @@ import { WorldMap } from "./world_map.jsx";
 import "./stylesheet.css";
 
 function App() {
-    const mediaIsActive = (_, { pathname }) => pathname.match(/^\/(media\/|$)/);
+    const mediaIsActive = (_, { pathname }) => pathname.match(/^\/(media|$)/);
     return (
         <BrowserRouter>
             <div className="content">
