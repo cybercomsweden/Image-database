@@ -44,7 +44,7 @@ function Chevron(props) {
     );
 }
 
-function createPlayButton() {
+function PlayButton() {
     return (
         <svg className="video-overlay-play-button" width="75px" height="75" viewBox="0 0 213.7 213.7" enableBackground="new 0 0 213.7 213.7">
             <polygon className="triangle" id="XMLID_18_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" points="73.5,62.5 148.5,105.8 73.5,149.1 " />
@@ -225,7 +225,7 @@ class Pic extends React.Component {
 
         let overlay = null;
         if (simpleEntity.media_type === Entity.EntityType.VIDEO.value) {
-            overlay = createPlayButton();
+          overlay = <PlayButton/>;
         }
 
         return (
@@ -266,7 +266,7 @@ function MediaList({ entities }) {
         for (const entity of entities) {
             let overlay = null;
             if (entity.media_type === 1) {
-                overlay = createPlayButton();
+              overlay = <PlayButton/>;
             }
             entityLinks.push(
                 <Link className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
