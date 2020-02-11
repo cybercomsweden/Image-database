@@ -101,11 +101,29 @@ header {
     background: white;
     border-radius: 0 0 5px 5px;
     align-items: flex-start;
+    overflow: hidden;
 }
 
 .preview-map {
     align-self: stretch;
     flex-grow: 1;
+}
+
+.preview-map.no-map {
+    background: #aaa;
+    color: black;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-map.no-map > svg {
+    opacity: 0.3;
+}
+
+.preview-map.no-map > span {
+    opacity: 0.7;
 }
 
 .preview {

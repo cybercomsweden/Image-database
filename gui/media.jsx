@@ -170,6 +170,17 @@ function Metadata(props) {
     /* eslint-enable camelcase */
 }
 
+function MapLogo({ width, height }) {
+    return (
+        <svg version="1.1" width={width} height={height} viewBox="0 0 1000 1000" enableBackground="new 0 0 1000 1000">
+            <g>
+                <path d="M698.7,554.7h114c17.1,0,36.6,12.3,44,27.8l0,0L637,621.3C657.8,598,678.7,576.3,698.7,554.7L698.7,554.7z M310,554.7H190.7l0,0L383.4,666l22.7-4C374.7,622.3,341.1,588.4,310,554.7z M541,757l245.5,141.7H969c17.2,0,25.5-12.7,18.4-28.4L876.7,626.6l0,0L591.1,677C573.1,701.1,556.1,727.4,541,757z M496.6,803.6l164.8,95.1l0,0H31c-17.3,0-25.6-12.7-18.4-28.4l45.1-99.2l0,0l293.1-51.7l138.7,80.1C491.6,801.3,494,802.7,496.6,803.6z M81.2,719.3l56-123.2l150.3,86.8L81.2,719.3L81.2,719.3z" />
+                <path d="M514.8,698.7c-5.5,13.5-24.5,13.4-30-0.1C423.7,549,300.6,508,277.1,374.7c-23.2-131.2,67.8-259.8,200.7-272.3c135.1-12.8,248.8,93,248.8,225.3C726.6,500.4,582.6,532.7,514.8,698.7z M619.6,327.6c0-66-53.6-119.5-119.7-119.5c-66.1,0-119.7,53.5-119.7,119.5c0,66,53.6,119.5,119.7,119.5C566,447.2,619.6,393.7,619.6,327.6L619.6,327.6z" />
+            </g>
+        </svg>
+    );
+}
+
 class Pic extends React.Component {
     constructor(props) {
         super(props);
@@ -204,9 +215,16 @@ class Pic extends React.Component {
                 uploaded, created, location, metadata,
             } = fullEntity;
 
-            let map = null;
+            let map;
             if (location && (location.latitude || location.longitude)) {
                 map = <Map className="preview-map" lng={location.longitude} lat={location.latitude} zoom="10" />;
+            } else {
+                map = (
+                    <div className="preview-map no-map">
+                        <MapLogo width="150" height="150" />
+                        <span>No GPS data available</span>
+                    </div>
+                );
             }
 
             additionalInfo = (
@@ -214,7 +232,7 @@ class Pic extends React.Component {
                     <Metadata
                         data={metadata}
                         filename={simpleEntity.path.replace("dest/", "")}
-                        locationName={map != null ? location.place : null}
+                        locationName={location ? location.place : null}
                         created={created}
                         uploaded={uploaded}
                     />
