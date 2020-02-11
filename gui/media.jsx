@@ -143,33 +143,24 @@ class Pic extends React.Component {
                     formattedDate = getFormattedDate(entityMeta.created.seconds);
                 }
                 metadata = (
-                    <ul>
-                        <li>
-                            <strong>Filename: </strong>
-                            {name}
-                        </li>
-                        <li>
-                            <strong>Created: </strong>
-                            {formattedDate}
-                        </li>
-                        <li>
-                            <strong>Width: </strong>
-                            {width}
-                        </li>
-                        <li>
-                            <strong>Height: </strong>
-                            {height}
-                        </li>
-                        <li>
-                            <strong>Duration: </strong>
+                    <dl className="property-table">
+                        <dt>Filename</dt>
+                        <dd>{name}</dd>
+                        <dt>Created</dt>
+                        <dd>{formattedDate}</dd>
+                        <dt>Width</dt>
+                        <dd>{width}</dd>
+                        <dt>Height</dt>
+                        <dd>{height}</dd>
+                        <dt>Duration</dt>
+                        <dd>
                             {entityMeta.metadata.video.duration.toFixed(1)}
-                            {" seconds"}
-                        </li>
-                        <li>
-                            <strong>Location: </strong>
-                            {place}
-                        </li>
-                    </ul>
+                            {" "}
+                            seconds
+                        </dd>
+                        <dt>Location</dt>
+                        <dd>{place}</dd>
+                    </dl>
                 );
             } else {
                 metadata = (
