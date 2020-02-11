@@ -1,5 +1,5 @@
 import React from "react";
-import { NavigationControl } from "mapbox-gl";
+import { NavigationControl, LngLatBounds } from "mapbox-gl";
 import { BaseMap } from "./widgets/map.jsx";
 import { Entities } from "./api.js";
 
@@ -87,6 +87,11 @@ export class WorldMap extends BaseMap {
             this.map.setZoom(1.6);
             this.map.setCenter([30, 30]);
         });
+        const bounds = new LngLatBounds();
+        features.forEach((feature) => {
+            bounds.extend(feature.geometry.coordinates);
+        });
+        this.map.fitBounds(bounds, { padding: 100 });
     }
 
     componentDidMount() {
