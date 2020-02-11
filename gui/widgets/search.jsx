@@ -12,8 +12,8 @@ class InnerSearch extends React.Component {
             userInput: "",
             options: null,
             showOptions: false,
-            activeOption: 0,
-            prevOption: 0,
+            activeOption: -1,
+            prevOption: -1,
         };
         this.onChange = this.onChange.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -41,17 +41,22 @@ class InnerSearch extends React.Component {
         const { activeOption, userInput } = this.state;
         const newInput = userInput.split(" ");
         const filteredOptions = this.filterOptions(newInput);
+        const { history } = this.props;
         if (event.key === "Enter") {
-            newInput[newInput.length - 1] = filteredOptions[activeOption].canonical_name;
-            // Updating the url with the searched terms
-            const { history } = this.props;
-            history.push("/media?q=".concat(newInput.join("+")));
+            if (activeOption === -1) {
+                newInput[newInput.length - 1] = "";
+                history.push("/media");
+            } else {
+                newInput[newInput.length - 1] = filteredOptions[activeOption].canonical_name;
+                // Updating the url with the searched terms
+                history.push("/media?q=".concat(newInput.join("+")));
+            }
             this.setState({
-                activeOption: 0,
+                activeOption: -1,
                 userInput: newInput.join(" "),
             });
         } else if (event.key === "ArrowUp") {
-            if (activeOption === 0) {
+            if (activeOption === -1) {
                 return;
             }
             this.setState({ activeOption: activeOption - 1 });
@@ -67,7 +72,7 @@ class InnerSearch extends React.Component {
         const { prevOption } = this.state;
         this.setState({
             activeOption: prevOption,
-            prevOption: 0,
+            prevOption: -1,
             showOptions: true,
         });
     }
@@ -75,7 +80,7 @@ class InnerSearch extends React.Component {
     onBlur() {
         const { activeOption } = this.state;
         this.setState({
-            activeOption: 0,
+            activeOption: -1,
             prevOption: activeOption,
             showOptions: false,
         });
