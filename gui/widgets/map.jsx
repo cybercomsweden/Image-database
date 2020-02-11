@@ -8,7 +8,8 @@ import "mapbox-gl/dist/mapbox-gl.css";
 export class BaseMap extends React.Component {
     constructor(props) {
         super(props);
-        this.map = React.createRef();
+        this.map = null;
+        this.container = React.createRef();
     }
 
     componentDidMount() {
@@ -21,6 +22,14 @@ export class BaseMap extends React.Component {
         const { mapRef } = this.props;
         if (mapRef) {
             mapRef(this.map);
+        }
+    }
+
+    componentDidUpdate() {
+        // This is needed since the map won't use all available space if the container
+        // is resized otherwise. This happens when switching between preview pages
+        if (this.map !== null) {
+            this.map.resize();
         }
     }
 

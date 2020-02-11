@@ -54,6 +54,122 @@ function createPlayButton() {
     );
 }
 
+function Metadata(props) {
+    /* eslint-disable camelcase */
+    const {
+        data: metadata,
+        filename,
+        locationName,
+        created,
+        uploaded,
+        ...attrs
+    } = props;
+    const { width, height, type_specific } = metadata;
+
+    const items = [];
+
+    if (filename != null) {
+        items.push(<dt key="filename_key">Filename</dt>);
+        items.push(<dd key="filename_value">{filename}</dd>);
+    }
+
+    if (created != null) {
+        items.push(<dt key="created_key">Taken</dt>);
+        items.push(<dd key="created_value">{getFormattedDate(created.seconds)}</dd>);
+    }
+
+    if (uploaded != null) {
+        items.push(<dt key="uploaded_key">Uploaded</dt>);
+        items.push(<dd key="uploaded_value">{getFormattedDate(uploaded.seconds)}</dd>);
+    }
+
+    if (width != null) {
+        items.push(<dt key="width_key">Width</dt>);
+        items.push(
+            <dd key="width_value">
+                {width}
+                {" px"}
+            </dd>,
+        );
+    }
+
+    if (height != null) {
+        items.push(<dt key="height_key">Height</dt>);
+        items.push(
+            <dd key="height_value">
+                {height}
+                {" px"}
+            </dd>,
+        );
+    }
+
+    if (locationName != null) {
+        items.push(<dt key="location_name_key">Location</dt>);
+        items.push(<dd key="location_name_value">{locationName}</dd>);
+    }
+
+    switch (type_specific) {
+    case "image": {
+        const {
+            image: {
+                exposure_time, aperture, iso, flash,
+            },
+        } = metadata;
+
+        if (exposure_time != null && exposure_time !== 0) {
+            items.push(<dt key="exposure_time_key">Exposure time</dt>);
+            items.push(<dd key="exposure_time_value">{exposure_time}</dd>);
+        }
+
+        if (iso != null && iso !== 0) {
+            items.push(<dt key="iso_key">ISO</dt>);
+            items.push(<dd key="iso_value">{iso}</dd>);
+        }
+
+        if (aperture != null && aperture !== 0) {
+            items.push(<dt key="aperture_key">Aperture</dt>);
+            items.push(<dd key="aperture_value">{aperture.toFixed(1)}</dd>);
+        }
+
+        if (flash != null) {
+            items.push(<dt key="flash_key">Flash</dt>);
+            items.push(<dd key="flash_value">{flash ? "Yes" : "No"}</dd>);
+        }
+        break;
+    }
+    case "video": {
+        const { video: { duration, rotation, frame_rate } } = metadata;
+
+        if (duration != null) {
+            items.push(<dt key="duration_key">Duration</dt>);
+            items.push(
+                <dd key="duration_value">
+                    {duration.toFixed(1)}
+                    {" seconds"}
+                </dd>,
+            );
+        }
+
+        // TODO: This should probably be shared between video and image
+        if (rotation != null && rotation !== 0) {
+            items.push(<dt key="rotation_key">Rotation</dt>);
+            items.push(<dd key="rotation_value">{rotation}</dd>);
+        }
+
+        if (frame_rate != null && frame_rate !== 0) {
+            items.push(<dt key="frame_rate_key">Frame rate</dt>);
+            items.push(<dd key="frame_rate_value">{frame_rate}</dd>);
+        }
+        break;
+    }
+    default:
+        throw new Error("Unexpected metadata type");
+    }
+
+    return <dl className="property-table" {...attrs}>{items}</dl>;
+    /* eslint-enable camelcase */
+}
+
 class Pic extends React.Component {
     constructor(props) {
         super(props);
@@ -79,105 +195,38 @@ class Pic extends React.Component {
     }
 
     render() {
-        const { entity, prevEntity, nextEntity } = this.props;
-        const { entity: entityMeta } = this.state;
-        let prev = "";
-        if (prevEntity != null) {
-            prev = (
-                <Link className="button prev" to={`/media/${prevEntity.id}`}>
-                    <Chevron dir="left" />
-                </Link>
-            );
-        }
-        let next = "";
-        if (nextEntity != null) {
-            next = (
-                <Link className="button next" to={`/media/${nextEntity.id}`}>
-                    <Chevron dir="right" />
-                </Link>
-            );
-        }
-        let map = null;
-        let metadata = "";
-        let width; let height; let flash; let formattedDate; let place;
-        const name = entity.path.replace("dest/", "");
-        let overlay = null;
-        if (entityMeta != null) {
-            width = entityMeta.metadata.width;
-            height = entityMeta.metadata.height;
-            if (entityMeta.location != null) {
-                place = entityMeta.location.place;
-            }
-            if (entityMeta.metadata.image != null) {
-                if (entityMeta.created !== null && entityMeta.created.seconds > 0) {
-                    formattedDate = getFormattedDate(entityMeta.created.seconds);
-                }
-                if (entityMeta.metadata.image.flash) {
-                    flash = "Yes";
-                } else {
-                    flash = "No";
-                }
-                metadata = (
-                    <dl className="property-table">
-                        <dt>Filename</dt>
-                        <dd>{name}</dd>
-                        <dt>Created</dt>
-                        <dd>{formattedDate}</dd>
-                        <dt>Width</dt>
-                        <dd>{width}</dd>
-                        <dt>Height</dt>
-                        <dd>{height}</dd>
-                        <dt>Aperture</dt>
-                        <dd>{entityMeta.metadata.image.aperture.toFixed(1)}</dd>
-                        <dt>ISO</dt>
-                        <dd>{entityMeta.metadata.image.iso}</dd>
-                        <dt>Flash</dt>
-                        <dd>{flash}</dd>
-                        <dt>Location</dt>
-                        <dd>{place}</dd>
-                    </dl>
-                );
-            } else if (entityMeta.metadata.type_specific === "video") {
-                overlay = createPlayButton();
-                if (entityMeta.created != null && entityMeta.created.seconds > 0) {
-                    formattedDate = getFormattedDate(entityMeta.created.seconds);
-                }
-                metadata = (
-                    <dl className="property-table">
-                        <dt>Filename</dt>
-                        <dd>{name}</dd>
-                        <dt>Created</dt>
-                        <dd>{formattedDate}</dd>
-                        <dt>Width</dt>
-                        <dd>{width}</dd>
-                        <dt>Height</dt>
-                        <dd>{height}</dd>
-                        <dt>Duration</dt>
-                        <dd>
-                            {entityMeta.metadata.video.duration.toFixed(1)}
-                            {" "}
-                            seconds
-                        </dd>
-                        <dt>Location</dt>
-                        <dd>{place}</dd>
-                    </dl>
-                );
-            } else {
-                metadata = (
-                    <ul>
-                        <li>
-                            <strong>Filename:</strong>
-                            {name}
-                        </li>
-                    </ul>
-                );
-            }
-            const { location } = entityMeta;
+        const { entity: simpleEntity, prevEntity, nextEntity } = this.props;
+        const { entity: fullEntity } = this.state;
+
+        let additionalInfo = null;
+        if (fullEntity !== null) {
+            const {
+                uploaded, created, location, metadata,
+            } = fullEntity;
+
+            let map = null;
             if (location && (location.latitude || location.longitude)) {
                 map = <Map className="preview-map" lng={location.longitude} lat={location.latitude} zoom="10" />;
             }
+
+            additionalInfo = (
+                <div className="preview-metadata">
+                    <Metadata
+                        data={metadata}
+                        filename={simpleEntity.path.replace("dest/", "")}
+                        locationName={map != null ? location.place : null}
+                        created={created}
+                        uploaded={uploaded}
+                    />
+                    {map}
+                </div>
+            );
         }
 
+        let overlay = null;
+        if (simpleEntity.media_type === Entity.EntityType.VIDEO.value) {
+            overlay = createPlayButton();
+        }
 
         return (
             <div className="preview-container">
@@ -188,15 +237,24 @@ class Pic extends React.Component {
                             <line x1="20" y1="2" x2="2" y2="20" stroke="white" strokeWidth="2" />
                         </svg>
                     </Link>
-                    {prev}
-                    <img className="preview" src={`/assets/${entity.preview_path}`} alt="" />
+                    {
+                        prevEntity != null && (
+                            <Link className="button prev" to={`/media/${prevEntity.id}`}>
+                                <Chevron dir="left" />
+                            </Link>
+                        )
+                    }
+                    <img className="preview" src={`/assets/${simpleEntity.preview_path}`} alt="" />
                     {overlay}
-                    {next}
+                    {
+                        nextEntity != null && (
+                            <Link className="button next" to={`/media/${nextEntity.id}`}>
+                                <Chevron dir="right" />
+                            </Link>
+                        )
+                    }
                 </div>
-                <div className="preview-metadata">
-                    {metadata}
-                    {map}
-                </div>
+                {additionalInfo}
             </div>
         );
     }
