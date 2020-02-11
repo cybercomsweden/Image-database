@@ -139,7 +139,7 @@ class Pic extends React.Component {
                 );
             } else if (entityMeta.metadata.type_specific === "video") {
                 overlay = createPlayButton();
-                if (entityMeta.created.seconds > 0) {
+                if (entityMeta.created != null && entityMeta.created.seconds > 0) {
                     formattedDate = getFormattedDate(entityMeta.created.seconds);
                 }
                 metadata = (
