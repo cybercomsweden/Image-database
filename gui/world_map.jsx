@@ -1,6 +1,7 @@
 import React from "react";
 import { NavigationControl } from "mapbox-gl";
 import { BaseMap } from "./widgets/map.jsx";
+import { Entities } from "./api.js";
 
 export class WorldMap extends BaseMap {
     constructor(props) {
@@ -9,20 +10,35 @@ export class WorldMap extends BaseMap {
             lng: 30,
             lat: 30,
             zoom: 1.6,
+            entities: null,
         };
         this.registerMapRef = this.registerMapRef.bind(this);
     }
 
     registerMapRef(map) {
-        // We utilize that BaseMap.mapRef is called before this.componentDidMount is
+    // We utilize that BaseMap.mapRef is called before this.componentDidMount is
         this.map = map;
     }
 
-    componentDidMount() {
-        // Override positions from <Map />
-        const { lng, lat, zoom } = this.state;
-        this.map.setCenter([lng, lat]);
-        this.map.setZoom(zoom);
+    async getMetadata() {
+        const entities = await Entities.fetch();
+        const features = [];
+        if (entities != null) {
+            for (const entity of entities.entity) {
+                const { location } = entity;
+                if (location != null) {
+                    features.push({
+                        type: "Feature",
+                        properties: {},
+                        geometry: {
+                            type: "Point",
+                            coordinates: [location.longitude, location.latitude],
+                        },
+
+                    });
+                }
+            }
+        }
 
         this.map.on("load", () => {
             this.map.loadImage("/static/mapbox-icon.png",
@@ -33,76 +49,7 @@ export class WorldMap extends BaseMap {
                         type: "geojson",
                         data: {
                             type: "FeatureCollection",
-                            features: [
-                                {
-                                    type: "Feature",
-                                    properties: {},
-                                    geometry: {
-                                        type: "Point",
-                                        coordinates: [
-                                            -91.395263671875,
-                                            -0.9145729757782163,
-                                        ],
-                                    },
-                                },
-                                {
-                                    type: "Feature",
-                                    properties: {},
-                                    geometry: {
-                                        type: "Point",
-                                        coordinates: [
-                                            -90.32958984375,
-                                            -0.6344474832838974,
-                                        ],
-                                    },
-                                },
-                                {
-                                    type: "Feature",
-                                    properties: {},
-                                    geometry: {
-                                        type: "Point",
-                                        coordinates: [
-                                            15.621355,
-                                            58.410869,
-                                        ],
-                                    },
-                                },
-                                {
-                                    type: "Feature",
-                                    properties: {},
-                                    geometry: {
-                                        type: "Point",
-                                        coordinates: [
-                                            -91.34033203125,
-                                            0.01647949196029245,
-                                        ],
-                                    },
-                                },
-                                {
-                                    type: "Feature",
-                                    properties: {},
-                                    geometry: {
-                                        type: "Point",
-                                        coordinates: [
-                                            114.170883,
-                                            22.312940,
-                                        ],
-                                    },
-                                },
-                                {
-                                    type: "Feature",
-                                    properties: {},
-                                    geometry: {
-                                        type: "Point",
-                                        coordinates: [
-                                            -74.004846,
-                                            40.710842,
-                                        ],
-                                    },
-                                },
-
-
-                            ],
+                            features,
                         },
                     });
                     // Add a symbol layer.
@@ -140,6 +87,14 @@ export class WorldMap extends BaseMap {
             this.map.setZoom(1.6);
             this.map.setCenter([30, 30]);
         });
+    }
+
+    componentDidMount() {
+        this.getMetadata();
+        // Override positions from <Map />
+        const { lng, lat, zoom } = this.state;
+        this.map.setCenter([lng, lat]);
+        this.map.setZoom(zoom);
     }
 
     render() {
