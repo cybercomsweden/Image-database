@@ -45,7 +45,7 @@ class InnerSearch extends React.Component {
         if (event.key === "Enter") {
             if (activeOption === -1) {
                 newInput[newInput.length - 1] = "";
-                history.push("/media");
+                history.push("/");
             } else {
                 newInput[newInput.length - 1] = filteredOptions[activeOption].canonical_name;
                 // Updating the url with the searched terms

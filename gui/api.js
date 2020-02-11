@@ -1,4 +1,5 @@
 import Pbf from "pbf";
+import queryString from "query-string";
 import {
     AutocompleteTags, Entity, Entities, Tag, Tags,
 } from "../src/entity.proto";
@@ -15,8 +16,12 @@ AutocompleteTags.fetch = async function fetchAutocompleteTags() {
     return fetchPb(AutocompleteTags, "/api/tags/autocomplete");
 };
 
-Entities.fetch = async function fetchEntities() {
-    return fetchPb(Entities, "/api/media");
+Entities.fetch = async function fetchEntities(query) {
+    let queryParams = "";
+    if (query) {
+        queryParams = `?${queryString.stringify({ q: query })}`;
+    }
+    return fetchPb(Entities, `/api/media${queryParams}`);
 };
 
 Entity.fetch = async function fetchEntity(id) {

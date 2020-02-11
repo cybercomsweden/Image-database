@@ -4,11 +4,13 @@ use anyhow::anyhow;
 use async_std::fs::File as AsyncFile;
 use async_std::io::ReadExt;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use futures::{FutureExt, StreamExt};
+use futures::{FutureExt, Stream, StreamExt};
 use prost::Message;
+use serde::Deserialize;
 use sha3::digest::Digest;
 use std::convert::TryFrom;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
 use walkdir::WalkDir;
 
@@ -77,8 +79,23 @@ async fn static_file(req: HttpRequest) -> Result<NamedFile> {
     }
 }
 
-async fn list_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
-    let mut entities = Box::pin(Entity::list_desc(&db).await?);
+#[derive(Debug, Deserialize)]
+struct SearchQuery {
+    q: Option<String>,
+}
+
+async fn list_from_database(
+    db: web::Data<DbConn>,
+    query_params: web::Query<SearchQuery>,
+) -> Result<impl Responder> {
+    let mut entities: Pin<Box<dyn Stream<Item = Result<Entity>>>> =
+        if let Some(ref query) = query_params.q {
+            let tags = query.split(" ").map(|x| x.to_owned()).collect();
+            Box::pin(Tag::search(&db, &tags).await?)
+        } else {
+            Box::pin(Entity::list_desc(&db).await?)
+        };
+
     let mut entities_pb = api::Entities::default();
     while let Some(entity) = entities.next().await.transpose()? {
         entities_pb.add(api::Entity::try_from(entity)?);
@@ -134,7 +151,7 @@ async fn get_tag_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Resul
 }
 
 async fn autocomplete_tags(db: web::Data<DbConn>) -> Result<impl Responder> {
-    let tags_pb = dbg!(api::AutocompleteTags::from_db(&db).await?);
+    let tags_pb = api::AutocompleteTags::from_db(&db).await?;
     let mut buf_mut = Vec::new();
     tags_pb.encode(&mut buf_mut)?;
 

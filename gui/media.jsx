@@ -1,5 +1,8 @@
 import React from "react";
-import { Link, Route, Switch } from "react-router-dom";
+import {
+    Link, Route, Switch, withRouter,
+} from "react-router-dom";
+import queryString from "query-string";
 import { Entity, Entities } from "./api.js";
 import { Map } from "./widgets/map.jsx";
 
@@ -17,6 +20,16 @@ function getFormattedDate(timestamp) {
     }
     return `${year}-${month}-${day} ${hours}:${minutes.substr(-2)}:${seconds.substr(-2)}`;
 }
+
+/**
+ * Just like <Link /> but preserves query string parameters
+ */
+const PreserveQueryParamsLink = withRouter((props) => {
+    const {
+        match, location, history, staticContext, to, children, ...attrs
+    } = props;
+    return <Link to={`${to}${location.search}`} {...attrs}>{children}</Link>;
+});
 
 function Chevron(props) {
     const { dir, ...other } = props;
@@ -83,7 +96,7 @@ function Metadata(props) {
         items.push(<dd key="uploaded_value">{getFormattedDate(uploaded.seconds)}</dd>);
     }
 
-    if (width != null) {
+    if (width != null && width !== 0) {
         items.push(<dt key="width_key">Width</dt>);
         items.push(
             <dd key="width_value">
@@ -93,7 +106,7 @@ function Metadata(props) {
         );
     }
 
-    if (height != null) {
+    if (height != null && height !== 0) {
         items.push(<dt key="height_key">Height</dt>);
         items.push(
             <dd key="height_value">
@@ -163,7 +176,7 @@ function Metadata(props) {
         break;
     }
     default:
-        throw new Error("Unexpected metadata type");
+        // This happens when the object is neither image nor video
     }
 
     return <dl className="property-table" {...attrs}>{items}</dl>;
@@ -243,32 +256,32 @@ class Pic extends React.Component {
 
         let overlay = null;
         if (simpleEntity.media_type === Entity.EntityType.VIDEO.value) {
-          overlay = <PlayButton/>;
+            overlay = <PlayButton />;
         }
 
         return (
             <div className="preview-container">
                 <div className="preview-media">
-                    <Link className="button close" to="/">
+                    <PreserveQueryParamsLink className="button close" to="/">
                         <svg width="20px" height="20px">
                             <line x1="2" y1="2" x2="20" y2="20" stroke="white" strokeWidth="2" />
                             <line x1="20" y1="2" x2="2" y2="20" stroke="white" strokeWidth="2" />
                         </svg>
-                    </Link>
+                    </PreserveQueryParamsLink>
                     {
                         prevEntity != null && (
-                            <Link className="button prev" to={`/media/${prevEntity.id}`}>
+                            <PreserveQueryParamsLink className="button prev" to={`/media/${prevEntity.id}`}>
                                 <Chevron dir="left" />
-                            </Link>
+                            </PreserveQueryParamsLink>
                         )
                     }
                     <img className="preview" src={`/assets/${simpleEntity.preview_path}`} alt="" />
                     {overlay}
                     {
                         nextEntity != null && (
-                            <Link className="button next" to={`/media/${nextEntity.id}`}>
+                            <PreserveQueryParamsLink className="button next" to={`/media/${nextEntity.id}`}>
                                 <Chevron dir="right" />
-                            </Link>
+                            </PreserveQueryParamsLink>
                         )
                     }
                 </div>
@@ -284,13 +297,13 @@ function MediaList({ entities }) {
         for (const entity of entities) {
             let overlay = null;
             if (entity.media_type === 1) {
-              overlay = <PlayButton/>;
+                overlay = <PlayButton />;
             }
             entityLinks.push(
-                <Link className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
+                <PreserveQueryParamsLink className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
                     <img src={`/assets/${entity.thumbnail_path}`} alt="" />
                     {overlay}
-                </Link>,
+                </PreserveQueryParamsLink>,
             );
         }
     }
@@ -301,20 +314,41 @@ function MediaList({ entities }) {
     );
 }
 
-export class Media extends React.Component {
+class InnerMedia extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
+            query: "",
             entities: null,
         };
     }
 
     componentDidMount() {
-        this.getThumbnails();
+        const { location } = this.props;
+        const params = queryString.parse(location.search);
+
+        this.setState(
+            { query: params.q },
+            () => this.getThumbnails(params.q),
+        );
     }
 
-    async getThumbnails() {
-        this.setState({ entities: await Entities.fetch() });
+    componentDidUpdate() {
+        const { location } = this.props;
+        const { query } = this.state;
+        const params = queryString.parse(location.search);
+
+        if (params.q !== query) {
+            // eslint-disable-next-line react/no-did-update-set-state
+            this.setState(
+                { query: params.q },
+                () => this.getThumbnails(params.q),
+            );
+        }
+    }
+
+    async getThumbnails(query) {
+        this.setState({ entities: await Entities.fetch(query) });
     }
 
     render() {
@@ -325,7 +359,7 @@ export class Media extends React.Component {
         const entities = entitiesPb.entity;
         return (
             <Switch>
-                <Route exact path="/"><MediaList entities={entities} /></Route>
+                <Route exact path={["/", "/media"]} render={() => <MediaList entities={entities} />} />
                 <Route
                     exact
                     path="/media/:id"
@@ -358,3 +392,5 @@ export class Media extends React.Component {
         );
     }
 }
+
+export const Media = withRouter(InnerMedia);
