@@ -4,7 +4,6 @@ import mapboxgl from "mapbox-gl";
 // Ensure that Mapbox CSS gets bundled by Parcel
 import "mapbox-gl/dist/mapbox-gl.css";
 
-
 export class BaseMap extends React.Component {
     constructor(props) {
         super(props);
@@ -60,6 +59,9 @@ export class Map extends React.Component {
         const { lng, lat, zoom } = this.props;
         this.map.setZoom(zoom);
         this.map.setCenter([lng, lat]);
+        new mapboxgl.Marker()
+            .setLngLat([lng, lat])
+            .addTo(this.map);
     }
 
     componentDidUpdate({ lng: prevLng, lat: prevLat, zoom: prevZoom }) {
