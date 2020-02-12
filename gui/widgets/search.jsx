@@ -27,8 +27,15 @@ class InnerSearch extends React.Component {
         this.updateUserInput();
     }
 
-    componentDidUpdate() {
-        this.updateUserInput();
+    componentDidUpdate(prevProps) {
+        const navPages = ["/", "/map", "/tags"];
+        const { location } = this.props;
+        if (location !== prevProps.location && navPages.includes(location.pathname)) {
+            // eslint-disable-next-line react/no-did-update-set-state
+            this.setState({ userInput: "" });
+        } else {
+            this.updateUserInput();
+        }
     }
 
     onChange(event) {
