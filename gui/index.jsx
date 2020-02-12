@@ -7,6 +7,7 @@ import { Media } from "./media.jsx";
 import { Search } from "./widgets/search.jsx";
 import { Tags } from "./tags.jsx";
 import { WorldMap } from "./world_map.jsx";
+import { Upload } from "./upload.jsx";
 
 import "./stylesheet.css";
 
@@ -20,12 +21,14 @@ function App() {
                         <NavLink to="/" isActive={mediaIsActive}>Media</NavLink>
                         <NavLink to="/tags">Tags</NavLink>
                         <NavLink to="/map">Map</NavLink>
+                        <NavLink to="/upload">Upload</NavLink>
                     </nav>
                     <Search />
                 </header>
                 <Switch>
                     <Route path="/tags"><Tags /></Route>
                     <Route path="/map"><WorldMap /></Route>
+                    <Route path="/upload"><Upload /></Route>
                     <Route path="/"><Media /></Route>
                 </Switch>
             </div>

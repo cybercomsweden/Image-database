@@ -1,5 +1,8 @@
 use actix_files::NamedFile;
-use actix_web::{middleware::Logger, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_multipart::Multipart;
+use actix_web::{
+    middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
+};
 use anyhow::anyhow;
 use async_std::fs::File as AsyncFile;
 use async_std::io::ReadExt;
@@ -8,6 +11,7 @@ use prost::Message;
 use serde::Deserialize;
 use sha3::digest::Digest;
 use std::convert::TryFrom;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
@@ -76,6 +80,32 @@ async fn static_file(req: HttpRequest) -> Result<NamedFile> {
         "mapbox-icon.png" => Ok(NamedFile::open("gui/mapbox-icon.png")?),
         _ => Err(anyhow!("No such file").into()),
     }
+}
+
+async fn save_file(mut payload: Multipart) -> std::result::Result<HttpResponse, Error> {
+    // iterate over multipart stream
+    while let Some(item) = payload.next().await {
+        let mut field = dbg!(item?);
+        let content_type = field.content_disposition().unwrap();
+        if content_type.get_name() != Some("fileToUpload") {
+            continue;
+        }
+        dbg!(&content_type.disposition);
+        dbg!(&content_type.parameters);
+        let filename = content_type.get_filename().unwrap();
+        let filepath = format!("./uploadedFiles/{}", filename);
+        // File::create is blocking operation, use threadpool
+        let mut f = web::block(|| std::fs::File::create(filepath))
+            .await
+            .unwrap();
+        // Field in turn isstream of *Bytes* object
+        while let Some(chunk) = field.next().await {
+            let data = chunk.unwrap();
+            // filesystem  operations are blocking, we have to use threadpool
+            f = web::block(move || f.write_all(&data).map(|_| f)).await?;
+        }
+    }
+    Ok(HttpResponse::Ok().into())
 }
 
 #[derive(Debug, Deserialize)]
@@ -179,8 +209,10 @@ async fn run_server(config: Config) -> Result<()> {
             .route("/", web::get().to(static_html))
             .route("/tags", web::get().to(static_html))
             .route("/map", web::get().to(static_html))
+            .route("/media/upload", web::post().to(save_file))
             .route("/media/{id}", web::get().to(static_html))
             .route("/media", web::get().to(static_html))
+            .route("upload", web::get().to(static_html))
             .route("/assets/{path:.*}", web::get().to(show_media))
             .route("/static/{file}", web::get().to(static_file))
             .route("/api/media", web::get().to(list_from_database))
