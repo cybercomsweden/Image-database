@@ -1,28 +1,16 @@
 use anyhow::{anyhow, Result};
 use chrono::NaiveDateTime;
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, Utc};
 use exif::{In, Reader, Tag, Value};
 use fraction::prelude::Fraction;
 use image::GenericImageView;
 use serde_json::{json, Value as serdeValue};
 use std::convert::TryInto;
 use std::fs;
-use std::path::Path;
 use std::process::Command;
 
 use crate::coord::Location;
-
-#[derive(Clone, Debug)]
-pub struct Metadata {
-    pub width: u32,
-    pub height: u32,
-    pub date_time: Option<NaiveDateTime>,
-    pub exposure_time: Option<Fraction>,
-    pub aperture: Option<f32>,
-    pub iso: Option<u32>,
-    pub flash: Option<bool>,
-    pub gps_location: Option<Location>,
-}
+use crate::thumbnail::{file_type_from_path, FileType, MediaType};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Rotate {
@@ -33,14 +21,57 @@ pub enum Rotate {
 }
 
 #[derive(Clone, Debug)]
-pub struct VideoMetadata {
+pub struct Metadata {
     pub width: u32,
     pub height: u32,
+    pub date_time: Option<DateTime<Utc>>,
+    pub gps_location: Option<Location>,
+    pub type_specific: TypeSpecific,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ImageMetadata {
+    pub exposure_time: Option<Fraction>,
+    pub aperture: Option<f32>,
+    pub iso: Option<u32>,
+    pub flash: Option<bool>,
+}
+#[derive(Clone, Debug, Default)]
+pub struct VideoMetadata {
     pub duration: f32,
     pub rotation: Option<Rotate>,
-    pub date_time: Option<DateTime<FixedOffset>>,
     pub framerate: Option<f32>,
-    pub gps_location: Option<Location>,
+}
+#[derive(Clone, Debug)]
+pub enum TypeSpecific {
+    Image(ImageMetadata),
+    Video(VideoMetadata),
+}
+
+impl Metadata {
+    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
+        let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
+        let metadata = if file_type == FileType::Jpeg {
+            extract_metadata_image_jpg(&path)?
+        } else if file_type.media_type() == MediaType::Video {
+            extract_metadata_video(&path)?
+        } else {
+            let width = 0;
+            let height = 0;
+            let date_time = None;
+            let gps_location = None;
+            let type_specific = TypeSpecific::Image(ImageMetadata::default());
+            Metadata {
+                width,
+                height,
+                date_time,
+                gps_location,
+                type_specific,
+            }
+        };
+
+        Ok(metadata)
+    }
 }
 
 fn json_as_u64(json: &serde_json::Map<String, serdeValue>, key: &str) -> Result<u64> {
@@ -92,87 +123,12 @@ fn gps_video(coord: &str) -> Result<Location> {
     Ok(Location::new(lat, lon, place))
 }
 
-impl VideoMetadata {
-    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let file_name = path.as_ref().as_os_str();
-        let proc = Command::new("ffprobe")
-            .args(&["-v", "quiet"])
-            .args(&["-print_format", "json"])
-            .args(&["-show_format"])
-            .args(&["-show_streams"])
-            .arg(file_name)
-            .output()?;
-
-        let json_output: serdeValue = serde_json::from_str(std::str::from_utf8(&proc.stdout)?)?;
-        let raw_metadata = json_output
-            .as_object()
-            .ok_or(anyhow!("Not a JSON object"))?;
-
-        let format = json_as_object(&raw_metadata, "format")?;
-        let duration = get_leaf_value(format, "duration")?
-            .as_str()
-            .ok_or(anyhow!("Duration is not string"))?
-            .parse::<f32>()?;
-
-        let tags = json_as_object(&format, "tags")?;
-
-        let date_time = tags
-            .get("creation_time")
-            .and_then(|d| d.as_str())
-            .and_then(|r| DateTime::parse_from_rfc3339(r).ok());
-
-        let framerate = tags
-            .get("com.android.capture.fps")
-            .and_then(|l| l.as_str())
-            .and_then(|r| r.parse::<f32>().ok());
-
-        let gps_string = if let Some(gps_string) = tags.get("location") {
-            Some(gps_string)
-        } else if let Some(gps_string) = tags.get("com.apple.quicktime.location.ISO6709") {
-            Some(gps_string)
-        } else {
-            None
-        };
-        let gps_location = gps_string
-            .and_then(|l| l.as_str())
-            .and_then(|r| gps_video(r).ok());
-
-        let streams = get_leaf_value(&raw_metadata, "streams")?
-            .as_array()
-            .ok_or(anyhow!("Not an array"))?;
-        for stream in streams {
-            let stream = stream.as_object().ok_or(anyhow!("Not a JSON object"))?;
-            if stream.get("codec_type") != Some(&json!("video")) {
-                continue;
-            }
-            let width = json_as_u64(&stream, "width")?.try_into()?;
-            let height = json_as_u64(&stream, "height")?.try_into()?;
-
-            let rotation = json_as_object(&stream, "tags")?
-                .get("rotate")
-                .and_then(|rot| rot.as_str())
-                .and_then(|r| map_rotation(r).ok());
-            return Ok(Self {
-                duration,
-                width,
-                height,
-                rotation,
-                date_time,
-                framerate,
-                gps_location,
-            });
-        }
-
-        Err(anyhow!("Unable to detect video stream")).into()
-    }
-}
-
 fn field_as_string(reader: &Reader, tag: Tag) -> Option<String> {
     Some(
         reader
             .get_field(tag, In::PRIMARY)?
             .value
-            .display_as(Tag::DateTime)
+            .display_as(tag)
             .to_string(),
     )
 }
@@ -266,26 +222,112 @@ pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<
     let date_time = field_as_string(&reader, Tag::DateTime);
     let date_time = date_time
         .and_then(|date_time| NaiveDateTime::parse_from_str(&date_time, "%Y-%m-%d %H:%M:%S").ok());
+    let date_time = if let Some(v) = date_time {
+        Some(DateTime::<Utc>::from_utc(v, Utc))
+    } else {
+        None
+    };
 
     let (width, height) = width_and_height(&path, &reader)?;
-    let exposure_time = exposure_time(&reader);
-    let aperture = aperture(&reader);
-    let iso = field_as_uint(&reader, Tag::PhotographicSensitivity);
-    let flash = flash(&reader);
     let gps_location = gps_image(&reader);
 
+    let mut image_metadata = ImageMetadata::default();
+    image_metadata.exposure_time = exposure_time(&reader);
+    image_metadata.aperture = aperture(&reader);
+    image_metadata.iso = field_as_uint(&reader, Tag::PhotographicSensitivity);
+    image_metadata.flash = flash(&reader);
+    let type_specific = TypeSpecific::Image(image_metadata);
+
     Ok(Metadata {
-        date_time,
         width,
         height,
-        exposure_time,
-        aperture,
-        iso,
-        flash,
+        date_time,
         gps_location,
+        type_specific,
     })
 }
 
-pub fn extract_metadata_video<P: AsRef<std::path::Path>>(path: P) -> Result<VideoMetadata> {
-    VideoMetadata::from_file(path)
+pub fn extract_metadata_video<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
+    let file_name = path.as_ref().as_os_str();
+    let proc = Command::new("ffprobe")
+        .args(&["-v", "quiet"])
+        .args(&["-print_format", "json"])
+        .args(&["-show_format"])
+        .args(&["-show_streams"])
+        .arg(file_name)
+        .output()?;
+
+    let json_output: serdeValue = serde_json::from_str(std::str::from_utf8(&proc.stdout)?)?;
+    let raw_metadata = json_output
+        .as_object()
+        .ok_or(anyhow!("Not a JSON object"))?;
+
+    let format = json_as_object(&raw_metadata, "format")?;
+    let duration = get_leaf_value(format, "duration")?
+        .as_str()
+        .ok_or(anyhow!("Duration is not string"))?
+        .parse::<f32>()?;
+
+    let tags = json_as_object(&format, "tags")?;
+
+    let date_time = tags
+        .get("creation_time")
+        .and_then(|d| d.as_str())
+        .and_then(|r| DateTime::parse_from_rfc3339(r).ok());
+
+    let date_time = if let Some(v) = date_time {
+        let timestamp = v.timestamp();
+        let naive = NaiveDateTime::from_timestamp(timestamp, 0);
+        Some(DateTime::<Utc>::from_utc(naive, Utc))
+    } else {
+        None
+    };
+
+    let framerate = tags
+        .get("com.android.capture.fps")
+        .and_then(|l| l.as_str())
+        .and_then(|r| r.parse::<f32>().ok());
+
+    let gps_string = if let Some(gps_string) = tags.get("location") {
+        Some(gps_string)
+    } else if let Some(gps_string) = tags.get("com.apple.quicktime.location.ISO6709") {
+        Some(gps_string)
+    } else {
+        None
+    };
+    let gps_location = gps_string
+        .and_then(|l| l.as_str())
+        .and_then(|r| gps_video(r).ok());
+
+    let mut video_metadata = VideoMetadata::default();
+    video_metadata.duration = duration;
+    video_metadata.framerate = framerate;
+
+    let streams = get_leaf_value(&raw_metadata, "streams")?
+        .as_array()
+        .ok_or(anyhow!("Not an array"))?;
+    for stream in streams {
+        let stream = stream.as_object().ok_or(anyhow!("Not a JSON object"))?;
+        if stream.get("codec_type") != Some(&json!("video")) {
+            continue;
+        }
+        let width = json_as_u64(&stream, "width")?.try_into()?;
+        let height = json_as_u64(&stream, "height")?.try_into()?;
+        let rotation = json_as_object(&stream, "tags")?
+            .get("rotate")
+            .and_then(|rot| rot.as_str())
+            .and_then(|r| map_rotation(r).ok());
+        video_metadata.rotation = rotation;
+        let type_specific = TypeSpecific::Video(video_metadata);
+
+        return Ok(Metadata {
+            width,
+            height,
+            date_time,
+            gps_location,
+            type_specific,
+        });
+    }
+
+    Err(anyhow!("Unable to detect video stream")).into()
 }

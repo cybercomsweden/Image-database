@@ -28,7 +28,7 @@ mod thumbnail;
 use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
-use crate::metadata::{extract_metadata_image_jpg, extract_metadata_video};
+use crate::metadata::Metadata;
 use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::tags::{add_parent, list_tags, remove_parent, search_tags, tag_image};
 use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, FileType, MediaType};
@@ -215,7 +215,7 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             continue;
         }
 
-        let metadata = match path.metadata() {
+        let file_metadata = match path.metadata() {
             Ok(m) => m,
             Err(err) => {
                 println!("Failed to stat file: {}", err);
@@ -239,31 +239,15 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             }
         };
 
+        let metadata = Metadata::from_file(&path)?;
+        let created = metadata.date_time;
+        let location = metadata.gps_location;
+
         let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
         let media_type = match file_type.media_type() {
             MediaType::Image | MediaType::RawImage => EntityType::Image,
             MediaType::Video => EntityType::Video,
         };
-
-        let mut created = None;
-        let mut location = None;
-        if file_type == FileType::Jpeg {
-            let image_metadata = extract_metadata_image_jpg(path)?;
-            if let Some(v) = image_metadata.date_time {
-                let date_created = DateTime::<Utc>::from_utc(v, Utc);
-                created = Some(date_created);
-            }
-            location = image_metadata.gps_location;
-        } else if media_type == EntityType::Video {
-            let video_metadata = extract_metadata_video(path)?;
-            if let Some(v) = video_metadata.date_time {
-                let timestamp = v.timestamp();
-                let naive = NaiveDateTime::from_timestamp(timestamp, 0);
-                let date_created = DateTime::<Utc>::from_utc(naive, Utc);
-                created = Some(date_created);
-            }
-            location = video_metadata.gps_location;
-        }
 
         let entity = Entity::insert(
             &client,
@@ -271,7 +255,7 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             &img,
             &thumbnail,
             &preview,
-            metadata.len(),
+            file_metadata.len(),
             &sha3,
             &created,
             &location,
@@ -307,12 +291,10 @@ async fn main() -> Result<()> {
             let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
             if file_type == FileType::Png {
                 println!("Cannot show metadata for PNG images");
-            } else if file_type == FileType::Jpeg {
-                println!("{:#?}", extract_metadata_image_jpg(&path)?);
             } else if file_type.media_type() == MediaType::RawImage {
                 println!("Showing metadata for raw images is not supported yet");
-            } else if file_type.media_type() == MediaType::Video {
-                println!("{:#?}", extract_metadata_video(&path)?);
+            } else if file_type.media_type() == MediaType::Video || file_type == FileType::Jpeg {
+                println!("{:#?}", Metadata::from_file(&path)?);
             }
         }
         Cmd::Search { tags } => {

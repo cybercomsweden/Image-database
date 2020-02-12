@@ -5,11 +5,12 @@ use std::convert::TryInto;
 use tokio_postgres::{Client, Row};
 
 use crate::error::{Error, Result};
-use crate::metadata::{extract_metadata_image_jpg, extract_metadata_video};
+use crate::metadata::Metadata as FileMetadata;
+use crate::metadata::Rotate as FileRotation;
+use crate::metadata::TypeSpecific;
 use crate::model::Entity as DbEntity;
 use crate::model::EntityType as DbEntityType;
 use crate::model::Tag as DbTag;
-use crate::thumbnail::{file_type_from_path, FileType, MediaType};
 include!(concat!(env!("OUT_DIR"), "/api.rs"));
 
 impl TryFrom<DbEntity> for Entity {
@@ -68,32 +69,45 @@ impl Entities {
 pub fn create_entity_with_metadata(db_entity: DbEntity) -> crate::error::Result<Entity> {
     let mut pb_entity = Entity::try_from(db_entity)?;
     let path = &pb_entity.path;
-    let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
     let mut pb_metadata = Metadata::default();
-    if file_type == FileType::Jpeg {
-        let metadata = extract_metadata_image_jpg(&path)?;
-        pb_metadata.width = metadata.width;
-        pb_metadata.height = metadata.height;
-        //TODO: fix exposure_time(also in proto file)
-        let mut image_metadata = metadata::Image::default();
-        if let Some(v) = metadata.aperture {
-            image_metadata.aperture = v.into();
+    //TODO: add try_from on metadata types?
+    let metadata = FileMetadata::from_file(&path)?;
+    if let Some(v) = metadata.date_time {
+        pb_entity.created = Some(Timestamp {
+            seconds: v.timestamp(),
+            nanos: v.timestamp_subsec_nanos().try_into()?,
+        });
+    }
+    pb_metadata.width = metadata.width;
+    pb_metadata.height = metadata.height;
+    match metadata.type_specific {
+        TypeSpecific::Image(img_metadata) => {
+            let mut pb_image_metadata = metadata::Image::default();
+            if let Some(v) = img_metadata.aperture {
+                pb_image_metadata.aperture = v.into();
+            }
+            if let Some(v) = img_metadata.iso {
+                pb_image_metadata.iso = v;
+            }
+            if let Some(v) = img_metadata.flash {
+                pb_image_metadata.flash = v;
+            }
+            pb_metadata.type_specific = Some(metadata::TypeSpecific::Image(pb_image_metadata));
         }
-        if let Some(v) = metadata.iso {
-            image_metadata.iso = v;
+        TypeSpecific::Video(video_metadata) => {
+            let mut pb_video_metadata = metadata::Video::default();
+            pb_video_metadata.duration = video_metadata.duration.into();
+            if let Some(v) = video_metadata.rotation {
+                pb_video_metadata.rotation = match v {
+                    FileRotation::Zero => metadata::Rotation::Zero.into(),
+                    FileRotation::Cw90 => metadata::Rotation::Cw90.into(),
+                    FileRotation::Ccw90 => metadata::Rotation::Ccw90.into(),
+                    FileRotation::Cw180 => metadata::Rotation::Cw180.into(),
+                };
+            }
+            //TODO: add framerate
+            pb_metadata.type_specific = Some(metadata::TypeSpecific::Video(pb_video_metadata));
         }
-        if let Some(v) = metadata.flash {
-            image_metadata.flash = v;
-        }
-        pb_metadata.type_specific = Some(metadata::TypeSpecific::Image(image_metadata));
-    } else if file_type.media_type() == MediaType::Video {
-        let metadata = extract_metadata_video(&path)?;
-        pb_metadata.width = metadata.width;
-        pb_metadata.height = metadata.height;
-        let mut video_metadata = metadata::Video::default();
-        video_metadata.duration = metadata.duration.into();
-        pb_metadata.type_specific = Some(metadata::TypeSpecific::Video(video_metadata));
-        //TODO: add rotation and frame rate
     }
     pb_entity.metadata = Some(pb_metadata);
 

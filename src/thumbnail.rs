@@ -7,7 +7,7 @@ use std::process;
 use std::process::Command;
 
 use crate::face_detection::{calc_midpoint, face_detection, largest_bbox, Bbox};
-use crate::metadata::{Rotate, VideoMetadata};
+use crate::metadata::{extract_metadata_video, Rotate, TypeSpecific};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MediaType {
@@ -69,9 +69,14 @@ fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
 
 fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
     let metadata =
-        VideoMetadata::from_file(orig_path.as_ref()).context("failed to get metadata, video")?;
+        extract_metadata_video(orig_path.as_ref()).context("failed to get metadata, video")?;
 
-    let skip_to = metadata.duration / 2.0;
+    let video_metadata = match metadata.type_specific {
+        TypeSpecific::Video(metadata) => metadata,
+        TypeSpecific::Image(_) => return Err(anyhow!("Given file is an image")),
+    };
+
+    let skip_to = video_metadata.duration / 2.0;
 
     let orig_path = orig_path
         .as_ref()
@@ -90,9 +95,9 @@ fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
         .output()
         .context("failed to extract thumbnail")?;
 
-    let (height, width) = if metadata.rotation == Some(Rotate::Zero)
-        || metadata.rotation == Some(Rotate::Cw180)
-        || metadata.rotation == None
+    let (height, width) = if video_metadata.rotation == Some(Rotate::Zero)
+        || video_metadata.rotation == Some(Rotate::Cw180)
+        || video_metadata.rotation == None
     {
         (metadata.height, metadata.width)
     } else {
