@@ -20,8 +20,11 @@ export class WorldMap extends BaseMap {
         this.map = map;
     }
 
-    async getMetadata() {
-        const entities = await Entities.fetch();
+    async getFeaturePoints() {
+        let { entities } = this;
+        if (entities == null) {
+            entities = await Entities.fetch();
+        }
         const features = [];
         if (entities != null) {
             for (const entity of entities.entity) {
@@ -39,6 +42,19 @@ export class WorldMap extends BaseMap {
                 }
             }
         }
+        return features;
+    }
+
+    fitMap(features) {
+        const bounds = new LngLatBounds();
+        features.forEach((feature) => {
+            bounds.extend(feature.geometry.coordinates);
+        });
+        this.map.fitBounds(bounds, { padding: 100 });
+    }
+
+    async getMetadata() {
+        const features = await this.getFeaturePoints();
 
         this.map.on("load", () => {
             this.map.loadImage("/static/mapbox-icon.png",
@@ -70,7 +86,7 @@ export class WorldMap extends BaseMap {
             this.map.flyTo({ center: e.features[0].geometry.coordinates, zoom: 10 });
         });
 
-        // zoom in and out
+        // zoom in and out controlls at top right corner of map
         this.map.addControl(new NavigationControl({ showCompass: false }));
 
         // Change the cursor to a pointer when the it enters a feature in the 'symbols' layer.
@@ -84,22 +100,19 @@ export class WorldMap extends BaseMap {
         });
 
         document.getElementById("zoom").addEventListener("click", () => {
-            this.map.setZoom(1.6);
-            this.map.setCenter([30, 30]);
+            this.fitMap(features);
         });
-        const bounds = new LngLatBounds();
-        features.forEach((feature) => {
-            bounds.extend(feature.geometry.coordinates);
-        });
-        this.map.fitBounds(bounds, { padding: 100 });
     }
 
-    componentDidMount() {
+    async componentDidMount() {
         this.getMetadata();
         // Override positions from <Map />
         const { lng, lat, zoom } = this.state;
         this.map.setCenter([lng, lat]);
         this.map.setZoom(zoom);
+
+        const features = await this.getFeaturePoints();
+        this.fitMap(features);
     }
 
     render() {
