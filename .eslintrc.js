@@ -67,6 +67,9 @@ module.exports = {
 
         // Allow <Component {...attrs />
         "react/jsx-props-no-spreading": ["off"],
+
+        // Allow listening to non-interactive elements
+        "jsx-a11y/no-noninteractive-element-interactions": ["off"],
     },
     "settings": {
         "react": {

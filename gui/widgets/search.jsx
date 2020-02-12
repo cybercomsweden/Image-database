@@ -19,6 +19,7 @@ class InnerSearch extends React.Component {
         this.onKeyDown = this.onKeyDown.bind(this);
         this.onFocus = this.onFocus.bind(this);
         this.onBlur = this.onBlur.bind(this);
+        this.onMouseDown = this.onMouseDown.bind(this);
     }
 
     componentDidMount() {
@@ -34,6 +35,19 @@ class InnerSearch extends React.Component {
         const userInput = event.target.value;
         this.setState({
             userInput,
+        });
+    }
+
+    onMouseDown(event) {
+        event.preventDefault();
+        const { userInput } = this.state;
+        const newInput = userInput.split(" ");
+        const { history } = this.props;
+        newInput[newInput.length - 1] = event.target.dataset.canonicalName;
+        // Updating the url with the searched terms
+        history.push("/media?q=".concat(newInput.join("+")));
+        this.setState({
+            userInput: newInput.join(" "),
         });
     }
 
@@ -124,14 +138,18 @@ class InnerSearch extends React.Component {
         const filteredOptions = this.filterOptions(userInput.split(" "));
         if (showOptions && filteredOptions.length) {
             optionList = (
-                <ul className="options">
+                <ul className="options" onMouseDown={this.onMouseDown}>
                     {filteredOptions.map((tag, index) => {
                         let className;
                         if (index === activeOption) {
                             className = "option-active";
                         }
                         return (
-                            <li className={className} key={tag.canonical_name}>
+                            <li
+                                className={className}
+                                key={tag.canonical_name}
+                                data-canonical-name={tag.canonical_name}
+                            >
                                 {tag.path.join("/")}
                             </li>
                         );
@@ -146,7 +164,6 @@ class InnerSearch extends React.Component {
                     className="search-field"
                     onChange={this.onChange}
                     onKeyDown={this.onKeyDown}
-                    onClick={this.onClick}
                     onFocus={this.onFocus}
                     onBlur={this.onBlur}
                     value={userInput}
