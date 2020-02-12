@@ -66,7 +66,10 @@ impl Entities {
     }
 }
 
-pub fn create_entity_with_metadata(db_entity: DbEntity) -> crate::error::Result<Entity> {
+pub fn create_entity_with_metadata(
+    db_entity: DbEntity,
+    tags: Tags,
+) -> crate::error::Result<Entity> {
     let mut pb_entity = Entity::try_from(db_entity)?;
     let path = &pb_entity.path;
     let mut pb_metadata = Metadata::default();
@@ -110,6 +113,7 @@ pub fn create_entity_with_metadata(db_entity: DbEntity) -> crate::error::Result<
         }
     }
     pb_entity.metadata = Some(pb_metadata);
+    pb_entity.tags = Some(tags);
 
     Ok(pb_entity)
 }

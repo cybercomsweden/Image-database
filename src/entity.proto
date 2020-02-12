@@ -56,6 +56,7 @@ message Entity {
     Timestamp created = 8;
 
     Metadata metadata = 9;
+    Tags tags = 10;
 
     message Location {
         double longitude = 1;

@@ -356,6 +356,24 @@ impl Tag {
             .await?;
         Ok(())
     }
+
+    pub async fn get_from_eid<'a, T: Borrow<i32> + 'a>(
+        client: &Client,
+        eid: T,
+    ) -> Result<impl Stream<Item = Result<Self>>> {
+        Ok(client
+            .query_raw(
+                format!(
+                    "
+                    SELECT {} FROM tag t JOIN tag_to_entity t2e on t.id = t2e.tid WHERE t2e.eid = $1",
+                    Self::COLS.join(", ")
+                )
+                .as_str(),
+                vec![eid.borrow()].iter().map(|x| x as &dyn ToSql),
+            )
+            .await?
+            .map(|row| Ok(Self::from_row(&row?)?)))
+    }
 }
 
 impl TagToEntity {

@@ -3,7 +3,6 @@ use actix_web::{middleware::Logger, web, App, HttpRequest, HttpResponse, HttpSer
 use anyhow::anyhow;
 use async_std::fs::File as AsyncFile;
 use async_std::io::ReadExt;
-use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::{FutureExt, Stream, StreamExt};
 use prost::Message;
 use serde::Deserialize;
@@ -113,8 +112,15 @@ async fn get_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<im
     let entity = Box::pin(Entity::get(&db, eid))
         .await
         .ok_or(anyhow!("Entity {} not mapped yet", eid))?;
+
+    let mut tags = Box::pin(Tag::get_from_eid(&db, eid).await?);
+    let mut tags_pb = api::Tags::default();
+    while let Some(tag) = tags.next().await.transpose()? {
+        tags_pb.add(api::Tag::try_from(tag)?);
+    }
+
     let mut buf_mut = Vec::new();
-    let pb_entity = api::create_entity_with_metadata(entity)?;
+    let pb_entity = api::create_entity_with_metadata(entity, tags_pb)?;
     pb_entity.encode(&mut buf_mut)?;
 
     Ok(HttpResponse::Ok()

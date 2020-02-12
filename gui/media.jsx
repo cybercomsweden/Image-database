@@ -223,11 +223,24 @@ class Pic extends React.Component {
         const { entity: fullEntity } = this.state;
 
         let additionalInfo = null;
+        const tags = [];
         if (fullEntity !== null) {
             const {
-                uploaded, created, location, metadata,
+                uploaded, created, location, metadata, tags: tagList,
             } = fullEntity;
 
+            if (tagList.tag.length) {
+                for (const tag of tagList.tag) {
+                    const dest = "/media?q=".concat(tag.canonical_name);
+                    tags.push(
+                        <Link className="tag" key={tag.canonical_name} to={dest}>
+                            <div>
+                                {tag.name}
+                            </div>
+                        </Link>,
+                    );
+                }
+            }
             let map;
             if (location && (location.latitude || location.longitude)) {
                 map = <Map className="preview-map" lng={location.longitude} lat={location.latitude} zoom="10" />;
@@ -285,6 +298,7 @@ class Pic extends React.Component {
                         )
                     }
                 </div>
+                <div className="preview-tags">{tags}</div>
                 {additionalInfo}
             </div>
         );
