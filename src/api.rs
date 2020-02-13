@@ -72,8 +72,6 @@ pub fn create_entity_with_metadata(
 ) -> crate::error::Result<Entity> {
     let mut pb_entity = Entity::try_from(db_entity)?;
     let path = &pb_entity.path;
-    let mut pb_metadata = Metadata::default();
-    //TODO: add try_from on metadata types?
     let metadata = FileMetadata::from_file(&path)?;
     if let Some(v) = metadata.date_time {
         pb_entity.created = Some(Timestamp {
@@ -81,41 +79,53 @@ pub fn create_entity_with_metadata(
             nanos: v.timestamp_subsec_nanos().try_into()?,
         });
     }
-    pb_metadata.width = metadata.width;
-    pb_metadata.height = metadata.height;
-    if let Some(v) = metadata.rotation {
-        pb_metadata.rotation = match v {
-            FileRotation::Zero => metadata::Rotation::Zero.into(),
-            FileRotation::Cw90 => metadata::Rotation::Cw90.into(),
-            FileRotation::Ccw90 => metadata::Rotation::Ccw90.into(),
-            FileRotation::Cw180 => metadata::Rotation::Cw180.into(),
-        };
-    }
-    match metadata.type_specific {
-        TypeSpecific::Image(img_metadata) => {
-            let mut pb_image_metadata = metadata::Image::default();
-            if let Some(v) = img_metadata.aperture {
-                pb_image_metadata.aperture = v.into();
-            }
-            if let Some(v) = img_metadata.iso {
-                pb_image_metadata.iso = v;
-            }
-            if let Some(v) = img_metadata.flash {
-                pb_image_metadata.flash = v;
-            }
-            pb_metadata.type_specific = Some(metadata::TypeSpecific::Image(pb_image_metadata));
-        }
-        TypeSpecific::Video(video_metadata) => {
-            let mut pb_video_metadata = metadata::Video::default();
-            pb_video_metadata.duration = video_metadata.duration.into();
-            //TODO: add framerate
-            pb_metadata.type_specific = Some(metadata::TypeSpecific::Video(pb_video_metadata));
-        }
-    }
+    let pb_metadata = Metadata::try_from(metadata)?;
     pb_entity.metadata = Some(pb_metadata);
     pb_entity.tags = Some(tags);
 
     Ok(pb_entity)
+}
+
+impl TryFrom<FileMetadata> for Metadata {
+    type Error = Error;
+    fn try_from(file_metadata: FileMetadata) -> Result<Metadata> {
+        let mut metadata = Metadata::default();
+        metadata.width = file_metadata.width;
+        metadata.height = file_metadata.height;
+        if let Some(v) = file_metadata.rotation {
+            metadata.rotation = match v {
+                FileRotation::Zero => metadata::Rotation::Zero.into(),
+                FileRotation::Cw90 => metadata::Rotation::Cw90.into(),
+                FileRotation::Ccw90 => metadata::Rotation::Ccw90.into(),
+                FileRotation::Cw180 => metadata::Rotation::Cw180.into(),
+            };
+        }
+        match file_metadata.type_specific {
+            TypeSpecific::Image(file_img_metadata) => {
+                let mut img_metadata = metadata::Image::default();
+                if let Some(v) = file_img_metadata.aperture {
+                    img_metadata.aperture = v.into()
+                }
+                if let Some(v) = file_img_metadata.iso {
+                    img_metadata.iso = v;
+                }
+                if let Some(v) = file_img_metadata.flash {
+                    img_metadata.flash = v;
+                }
+                metadata.type_specific = Some(metadata::TypeSpecific::Image(img_metadata));
+            }
+            TypeSpecific::Video(file_video_metadata) => {
+                let mut video_metadata = metadata::Video::default();
+                video_metadata.duration = file_video_metadata.duration.into();
+                if let Some(v) = file_video_metadata.framerate {
+                    video_metadata.frame_rate = v.into();
+                }
+                metadata.type_specific = Some(metadata::TypeSpecific::Video(video_metadata));
+            }
+        }
+
+        Ok(metadata)
+    }
 }
 
 impl TryFrom<DbTag> for Tag {

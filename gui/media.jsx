@@ -108,6 +108,16 @@ function Metadata(props) {
         );
     }
 
+    if (height != null && height !== 0) {
+        items.push(<dt key="height_key">Height</dt>);
+        items.push(
+            <dd key="height_value">
+                {height}
+                {" px"}
+            </dd>,
+        );
+    }
+
     if (rotation != null && rotation !== 0) {
         let rotation_value;
         switch (rotation) {
@@ -128,16 +138,6 @@ function Metadata(props) {
         }
         items.push(<dt key="rotation_key">Rotation</dt>);
         items.push(<dd key="rotation_value">{rotation_value}</dd>);
-    }
-
-    if (height != null && height !== 0) {
-        items.push(<dt key="height_key">Height</dt>);
-        items.push(
-            <dd key="height_value">
-                {height}
-                {" px"}
-            </dd>,
-        );
     }
 
     if (locationName != null) {
