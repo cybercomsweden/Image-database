@@ -77,7 +77,9 @@ function Metadata(props) {
         uploaded,
         ...attrs
     } = props;
-    const { width, height, type_specific } = metadata;
+    const {
+        width, height, rotation, type_specific,
+    } = metadata;
 
     const items = [];
 
@@ -104,6 +106,28 @@ function Metadata(props) {
                 {" px"}
             </dd>,
         );
+    }
+
+    if (rotation != null && rotation !== 0) {
+        let rotation_value;
+        switch (rotation) {
+        case 1: {
+            rotation_value = "Cw90";
+            break;
+        }
+        case 2: {
+            rotation_value = "Ccw90";
+            break;
+        }
+        case 3: {
+            rotation_value = "Cw180";
+            break;
+        }
+        default:
+            // Unknown rotation
+        }
+        items.push(<dt key="rotation_key">Rotation</dt>);
+        items.push(<dd key="rotation_value">{rotation_value}</dd>);
     }
 
     if (height != null && height !== 0) {
@@ -151,7 +175,7 @@ function Metadata(props) {
         break;
     }
     case "video": {
-        const { video: { duration, rotation, frame_rate } } = metadata;
+        const { video: { duration, frame_rate } } = metadata;
 
         if (duration != null) {
             items.push(<dt key="duration_key">Duration</dt>);
@@ -161,12 +185,6 @@ function Metadata(props) {
                     {" seconds"}
                 </dd>,
             );
-        }
-
-        // TODO: This should probably be shared between video and image
-        if (rotation != null && rotation !== 0) {
-            items.push(<dt key="rotation_key">Rotation</dt>);
-            items.push(<dd key="rotation_value">{rotation}</dd>);
         }
 
         if (frame_rate != null && frame_rate !== 0) {

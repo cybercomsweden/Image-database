@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Context, Result};
+use exif::Reader;
 use image::{DynamicImage, GenericImageView, ImageBuffer};
 use std::convert::TryInto;
 use std::fs;
@@ -52,11 +53,8 @@ fn add_suffix<T: AsRef<str>, U: AsRef<str>>(
     Ok(dest_path)
 }
 
-fn find_orientation<P: AsRef<std::path::Path>>(path: P) -> Option<Rotate> {
-    let file = fs::File::open(path).unwrap();
-    let reader = exif::Reader::new(&mut std::io::BufReader::new(&file)).unwrap();
-
-    let exif_orientation = reader.get_field(exif::Tag::Orientation, exif::In::PRIMARY)?;
+pub fn find_orientation(reader: &Reader) -> Option<Rotate> {
+    let exif_orientation = &reader.get_field(exif::Tag::Orientation, exif::In::PRIMARY)?;
 
     match exif_orientation.value.get_uint(0)? {
         1 => Some(Rotate::Zero),
@@ -94,10 +92,9 @@ fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
         .arg("-") // Output to stdout
         .output()
         .context("failed to extract thumbnail")?;
-
-    let (height, width) = if video_metadata.rotation == Some(Rotate::Zero)
-        || video_metadata.rotation == Some(Rotate::Cw180)
-        || video_metadata.rotation == None
+    let (height, width) = if metadata.rotation == Some(Rotate::Zero)
+        || metadata.rotation == Some(Rotate::Cw180)
+        || metadata.rotation == None
     {
         (metadata.height, metadata.width)
     } else {
@@ -138,7 +135,9 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
         MediaType::Image => (
             image::open(path.as_ref()).context("failed to open image")?,
             if file_type == FileType::Jpeg {
-                find_orientation(path.as_ref()).unwrap_or(Rotate::Zero)
+                let file = fs::File::open(&path).unwrap();
+                let reader = exif::Reader::new(&mut std::io::BufReader::new(&file)).unwrap();
+                find_orientation(&reader).unwrap_or(Rotate::Zero)
             } else {
                 Rotate::Zero
             },

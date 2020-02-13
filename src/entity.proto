@@ -19,9 +19,10 @@ message Timestamp {
 message Metadata {
     uint32 width = 1;
     uint32 height = 2;
+    Rotation rotation = 3;
     oneof type_specific {
-        Image image = 3;
-        Video video = 4;
+        Image image = 4;
+        Video video = 5;
     }
 
     message Image {
@@ -33,8 +34,7 @@ message Metadata {
 
     message Video {
         double duration = 1;
-        Rotation rotation = 2;
-        double frame_rate = 3;
+        double frame_rate = 2;
     }
 
     enum Rotation {

@@ -10,7 +10,7 @@ use std::fs;
 use std::process::Command;
 
 use crate::coord::Location;
-use crate::thumbnail::{file_type_from_path, FileType, MediaType};
+use crate::thumbnail::{file_type_from_path, find_orientation, FileType, MediaType};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Rotate {
@@ -26,6 +26,7 @@ pub struct Metadata {
     pub height: u32,
     pub date_time: Option<DateTime<Utc>>,
     pub gps_location: Option<Location>,
+    pub rotation: Option<Rotate>,
     pub type_specific: TypeSpecific,
 }
 
@@ -39,7 +40,6 @@ pub struct ImageMetadata {
 #[derive(Clone, Debug, Default)]
 pub struct VideoMetadata {
     pub duration: f32,
-    pub rotation: Option<Rotate>,
     pub framerate: Option<f32>,
 }
 #[derive(Clone, Debug)]
@@ -60,12 +60,14 @@ impl Metadata {
             let height = 0;
             let date_time = None;
             let gps_location = None;
+            let rotation = None;
             let type_specific = TypeSpecific::Image(ImageMetadata::default());
             Metadata {
                 width,
                 height,
                 date_time,
                 gps_location,
+                rotation,
                 type_specific,
             }
         };
@@ -228,6 +230,7 @@ pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<
         None
     };
 
+    let rotation = find_orientation(&reader);
     let (width, height) = width_and_height(&path, &reader)?;
     let gps_location = gps_image(&reader);
 
@@ -243,6 +246,7 @@ pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<
         height,
         date_time,
         gps_location,
+        rotation,
         type_specific,
     })
 }
@@ -317,7 +321,6 @@ pub fn extract_metadata_video<P: AsRef<std::path::Path>>(path: P) -> Result<Meta
             .get("rotate")
             .and_then(|rot| rot.as_str())
             .and_then(|r| map_rotation(r).ok());
-        video_metadata.rotation = rotation;
         let type_specific = TypeSpecific::Video(video_metadata);
 
         return Ok(Metadata {
@@ -325,6 +328,7 @@ pub fn extract_metadata_video<P: AsRef<std::path::Path>>(path: P) -> Result<Meta
             height,
             date_time,
             gps_location,
+            rotation,
             type_specific,
         });
     }

@@ -83,6 +83,14 @@ pub fn create_entity_with_metadata(
     }
     pb_metadata.width = metadata.width;
     pb_metadata.height = metadata.height;
+    if let Some(v) = metadata.rotation {
+        pb_metadata.rotation = match v {
+            FileRotation::Zero => metadata::Rotation::Zero.into(),
+            FileRotation::Cw90 => metadata::Rotation::Cw90.into(),
+            FileRotation::Ccw90 => metadata::Rotation::Ccw90.into(),
+            FileRotation::Cw180 => metadata::Rotation::Cw180.into(),
+        };
+    }
     match metadata.type_specific {
         TypeSpecific::Image(img_metadata) => {
             let mut pb_image_metadata = metadata::Image::default();
@@ -100,14 +108,6 @@ pub fn create_entity_with_metadata(
         TypeSpecific::Video(video_metadata) => {
             let mut pb_video_metadata = metadata::Video::default();
             pb_video_metadata.duration = video_metadata.duration.into();
-            if let Some(v) = video_metadata.rotation {
-                pb_video_metadata.rotation = match v {
-                    FileRotation::Zero => metadata::Rotation::Zero.into(),
-                    FileRotation::Cw90 => metadata::Rotation::Cw90.into(),
-                    FileRotation::Ccw90 => metadata::Rotation::Ccw90.into(),
-                    FileRotation::Cw180 => metadata::Rotation::Cw180.into(),
-                };
-            }
             //TODO: add framerate
             pb_metadata.type_specific = Some(metadata::TypeSpecific::Video(pb_video_metadata));
         }
