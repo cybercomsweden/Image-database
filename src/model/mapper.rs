@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
+use deunicode::deunicode;
 use futures::{Stream, StreamExt};
 use regex::Regex;
 use std::borrow::Borrow;
@@ -213,10 +214,8 @@ impl Tag {
     }
 
     pub fn canonical_name(name: &str) -> Result<String> {
-        // NOTE: only tag in english atm
-        let re_char = Regex::new(r"[^A-Za-z0-9\s]")?;
         let re_space = Regex::new(r"\s+")?;
-        let name = re_char.replace_all(&name, "");
+        let name = deunicode(name);
         let name = re_space.replace_all(&name, "-");
         Ok(name.to_lowercase())
     }
