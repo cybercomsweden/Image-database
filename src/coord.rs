@@ -5,11 +5,43 @@ use std::fmt;
 
 use crate::error::Result;
 
-fn to_dec_degrees(value: f64) -> (isize, isize, isize) {
-    let d = value.trunc();
-    let m = (60_f64 * (value - d)).abs().trunc();
-    let s = 3600_f64 * (value - d).abs() - 60_f64 * m;
-    return (d as isize, m as isize, s as isize);
+pub struct DecDegrees {
+    pub d: f64,
+    pub m: f64,
+    pub s: f64,
+    pub is_positive: bool,
+}
+
+impl DecDegrees {
+    pub fn new(d: f64, m: f64, s: f64, is_positive: bool) -> Self {
+        Self {
+            d,
+            m,
+            s,
+            is_positive,
+        }
+    }
+
+    pub fn from_scalar(value: f64) -> Self {
+        let d = value.trunc();
+        let m = (60_f64 * (value - d)).abs().trunc();
+        let s = 3600_f64 * (value - d).abs() - 60_f64 * m;
+        Self {
+            d,
+            m,
+            s,
+            is_positive: value >= 0.0,
+        }
+    }
+
+    pub fn to_scalar(&self) -> f64 {
+        let value = self.d + self.m / 60.0 + self.s / 3600.0;
+        if self.is_positive {
+            value
+        } else {
+            -value
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -28,16 +60,9 @@ impl Location {
         }
     }
 
-    pub fn from_dec_degrees(
-        lat_d: f64,
-        lat_m: f64,
-        lat_s: f64,
-        lon_d: f64,
-        lon_m: f64,
-        lon_s: f64,
-    ) -> Self {
-        let lat = lat_d + lat_m / 60.0 + lat_s / 3600.0;
-        let lon = lon_d + lon_m / 60.0 + lon_s / 3600.0;
+    pub fn from_dec_degrees(lat: &DecDegrees, lon: &DecDegrees) -> Self {
+        let lat = lat.to_scalar();
+        let lon = lon.to_scalar();
         let place = Self::reverse_geolocation(lat, lon);
         Self::new(lat, lon, place)
     }
@@ -82,13 +107,19 @@ impl Location {
 
 impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO: Convert to S and W when negative
-        let (lat_d, lat_m, lat_s) = to_dec_degrees(self.latitude);
-        let (lon_d, lon_m, lon_s) = to_dec_degrees(self.longitude);
+        let lat = DecDegrees::from_scalar(self.latitude);
+        let lon = DecDegrees::from_scalar(self.longitude);
         write!(
             f,
-            "{}° {}′ {}″ N, {}° {}′ {}″ E",
-            lat_d, lat_m, lat_s, lon_d, lon_m, lon_s
+            "{}° {}′ {}″ {}, {}° {}′ {}″ {}",
+            lat.d,
+            lat.m,
+            lat.s,
+            if lat.is_positive { 'N' } else { 'S' },
+            lon.d,
+            lon.m,
+            lon.s,
+            if lat.is_positive { 'E' } else { 'W' },
         )
     }
 }

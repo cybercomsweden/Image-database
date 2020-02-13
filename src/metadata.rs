@@ -9,7 +9,7 @@ use std::convert::TryInto;
 use std::fs;
 use std::process::Command;
 
-use crate::coord::Location;
+use crate::coord::{DecDegrees, Location};
 use crate::thumbnail::{file_type_from_path, find_orientation, FileType, MediaType};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -204,13 +204,27 @@ fn gps_image(reader: &Reader) -> Option<Location> {
     let lat_field = &reader.get_field(Tag::GPSLatitude, In::PRIMARY)?.value;
     let lon_field = &reader.get_field(Tag::GPSLongitude, In::PRIMARY)?.value;
     if let (Value::Rational(lat_dms), Value::Rational(lon_dms)) = (lat_field, lon_field) {
+        let lat_is_positive = reader
+            .get_field(Tag::GPSLatitudeRef, In::PRIMARY)
+            .map(|v| v.display_value().to_string() == "N")
+            .unwrap_or(true);
+        let lon_is_positive = reader
+            .get_field(Tag::GPSLongitudeRef, In::PRIMARY)
+            .map(|v| v.display_value().to_string() == "E")
+            .unwrap_or(true);
         Some(Location::from_dec_degrees(
-            lat_dms[0].to_f64(),
-            lat_dms[1].to_f64(),
-            lat_dms[2].to_f64(),
-            lon_dms[0].to_f64(),
-            lon_dms[1].to_f64(),
-            lon_dms[2].to_f64(),
+            &DecDegrees::new(
+                lat_dms[0].to_f64(),
+                lat_dms[1].to_f64(),
+                lat_dms[2].to_f64(),
+                lat_is_positive,
+            ),
+            &DecDegrees::new(
+                lon_dms[0].to_f64(),
+                lon_dms[1].to_f64(),
+                lon_dms[2].to_f64(),
+                lon_is_positive,
+            ),
         ))
     } else {
         None

@@ -126,6 +126,53 @@ impl Entity {
         )?)
     }
 
+    pub async fn save(&self, client: &Client) -> Result<()> {
+        client
+            .query_one(
+                format!(
+                    "
+                        UPDATE entity
+                        SET media_type = $1,
+                            path = $2,
+                            thumbnail_path = $3,
+                            preview_path = $4,
+                            size = $5,
+                            sha3 = $6,
+                            uploaded = $7,
+                            created = $8,
+                            location = $9
+                        WHERE id = $10
+                        RETURNING {}
+                    ",
+                    Self::COLS.join(", "),
+                )
+                .as_str(),
+                &[
+                    &self.media_type,
+                    &self
+                        .path
+                        .to_str()
+                        .ok_or(anyhow!("Media path contains non UTF-8 characters"))?,
+                    &self
+                        .thumbnail_path
+                        .to_str()
+                        .ok_or(anyhow!("Thumbnial path contains non UTF-8 characters"))?,
+                    &self
+                        .preview_path
+                        .to_str()
+                        .ok_or(anyhow!("Preview path contains non UTF-8 characters"))?,
+                    &i64::try_from(self.size)?,
+                    &self.sha3.as_ref(),
+                    &self.uploaded,
+                    &self.created,
+                    &self.location,
+                    &self.id,
+                ],
+            )
+            .await?;
+        Ok(())
+    }
+
     pub fn from_row(row: &Row) -> Result<Self> {
         Ok(Self {
             id: row.try_get::<_, i32>(0)?,

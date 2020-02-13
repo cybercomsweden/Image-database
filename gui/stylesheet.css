@@ -10,6 +10,11 @@ body {
   font-family: 'Open Sans', sans-serif;
 }
 
+.inherit-color {
+    fill: currentColor;
+    stroke: currentColor;
+}
+
 .button {
     outline: 0;
 }
@@ -42,15 +47,24 @@ body {
   stroke-width: 6;
 }
 
-.close {
+.preview-media .nav-bar {
     position: absolute;
     top: 16px;
     right: 16px;
-    opacity: 0.4;
+    display: inline-flex;
 }
 
-.close:hover {
-    opacity: 1;
+.preview-media .nav-bar > * {
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+}
+
+.preview-media .nav-bar > :not(:first-child) {
+    margin-left: 8px;
+}
+
+.preview-media .nav-bar > :hover {
+    color: rgba(255, 255, 255, 1);
     transition: all 100ms ease-in-out;
 }
 
@@ -182,6 +196,7 @@ ul.options li {
     background: whitesmoke;
     font-size: 1.2rem;
     width: 100%;
+    cursor: pointer;
 }
 
  ul.options li.option-active {

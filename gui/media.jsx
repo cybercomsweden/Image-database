@@ -31,6 +31,19 @@ const PreserveQueryParamsLink = withRouter((props) => {
     return <Link to={`${to}${location.search}`} {...attrs}>{children}</Link>;
 });
 
+function EditIcon(props) {
+    return (
+        <svg version="1.1" viewBox="0 0 1000 1000" {...props}>
+            <g>
+                <path d="M158.1,990.4c-8.8-1.5-17.8-2.5-26.4-4.7C74.9,971.1,37,935.7,17.6,880.6C11.8,864,10,846.7,10,829.2c0-209,0-418,0.1-627c0-55.7,22.7-100.2,68-132.7c24.4-17.5,52.1-26.4,82.1-28c4.1-0.2,8.2-0.3,12.3-0.3c164.4,0,328.8,0,493.2,0c2.1,0,4.2,0,7.3,0c-1.5,1.8-2.3,3-3.3,4c-29,29.1-58,58.1-87.2,87c-2.2,2.1-6.1,3.5-9.1,3.5c-123.4,0.2-246.7,0.3-370.1,0.1c-29.9,0-55,10-75,32.3c-16.5,18.5-23.9,40.5-23.9,65c0,188.3-0.1,376.5,0,564.8c0,47.7,29.9,85.2,75.5,95.2c7.4,1.6,15.1,2.1,22.7,2.1c187.9,0.1,375.7,0.1,563.6,0.1c56.7,0,98-41.4,98-98.1c0.1-123.4,0-246.7-0.1-370.1c0-4.7,1.4-7.9,4.7-11.2c28.3-28.1,56.5-56.3,84.6-84.6c1.4-1.4,2.2-3.2,3.3-4.9c0.6,0.4,1.1,0.7,1.7,1.1c0.1,1.6,0.4,3.3,0.4,4.9c0,165.4,0.2,330.8-0.1,496.2c-0.1,55.5-22.5,100.2-67.8,132.8c-22.1,16-47.2,24.8-74.4,27.6c-2.1,0.2-4.2,0.7-6.3,1.1C592.9,990.4,375.5,990.4,158.1,990.4z" />
+                <path d="M858.5,9.6c14.9,1.5,24.9,10.8,34.8,20.8c27.4,27.6,55.1,54.9,82.7,82.3c17.7,17.6,19,40.8,2.1,59.1c-14.8,16.1-30.8,31-46.8,46.9C881.5,168,831.8,117.5,782.2,66.9c-0.7,0.4-1.3,0.9-1.9,1.3c1.1-1.3,2.2-2.6,3.4-3.8c10.9-10.9,22.2-21.5,32.8-32.7c10.4-11,21.8-20,37.4-22.1C855.3,9.6,856.9,9.6,858.5,9.6z" />
+                <path d="M425.1,420.8C534.2,312.4,645,202.2,756.3,91.7c49.8,50.7,99.4,101.3,149.6,152.5c-109,108.3-219.9,218.5-331.1,329C525,522.4,475.3,471.9,425.1,420.8z" />
+                <path d="M401.8,443.7c50.4,51.2,99.6,101.4,149.1,151.7c-68.8,19.5-138.8,39.4-209.8,59.6C361.3,584.5,381.3,514.9,401.8,443.7z" />
+            </g>
+        </svg>
+    );
+}
+
 function Chevron(props) {
     const { dir, ...other } = props;
 
@@ -293,12 +306,15 @@ class Pic extends React.Component {
         return (
             <div className="preview-container">
                 <div className="preview-media">
-                    <PreserveQueryParamsLink className="button close" to="/">
-                        <svg width="20px" height="20px">
-                            <line x1="2" y1="2" x2="20" y2="20" stroke="white" strokeWidth="2" />
-                            <line x1="20" y1="2" x2="2" y2="20" stroke="white" strokeWidth="2" />
-                        </svg>
-                    </PreserveQueryParamsLink>
+                    <div className="nav-bar">
+                        <EditIcon className="inherit-color" width="20" height="20" />
+                        <PreserveQueryParamsLink className="button close" to="/">
+                            <svg className="inherit-color" width="20px" height="20px">
+                                <line x1="2" y1="2" x2="20" y2="20" strokeWidth="2" />
+                                <line x1="20" y1="2" x2="2" y2="20" strokeWidth="2" />
+                            </svg>
+                        </PreserveQueryParamsLink>
+                    </div>
                     {
                         prevEntity != null && (
                             <PreserveQueryParamsLink className="button prev" to={`/media/${prevEntity.id}`}>
