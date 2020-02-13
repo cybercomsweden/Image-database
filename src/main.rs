@@ -85,13 +85,11 @@ async fn static_file(req: HttpRequest) -> Result<NamedFile> {
 async fn save_file(mut payload: Multipart) -> std::result::Result<HttpResponse, Error> {
     // iterate over multipart stream
     while let Some(item) = payload.next().await {
-        let mut field = dbg!(item?);
+        let mut field = item?;
         let content_type = field.content_disposition().unwrap();
         if content_type.get_name() != Some("fileToUpload") {
             continue;
         }
-        dbg!(&content_type.disposition);
-        dbg!(&content_type.parameters);
         let filename = content_type.get_filename().unwrap();
         let filepath = format!("./uploadedFiles/{}", filename);
         // File::create is blocking operation, use threadpool
