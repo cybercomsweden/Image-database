@@ -1,13 +1,6 @@
 import React from "react";
 
 export class Upload extends React.Component {
-    static handleFiles(filesParam) {
-        const files = [...filesParam];
-        // this.initializeProgress(files.length);
-        files.forEach(Upload.uploadFile);
-        // files.forEach(this.previewFile);
-    }
-
     /*
     static previewFile(file) {
         const reader = new FileReader();
@@ -19,39 +12,10 @@ export class Upload extends React.Component {
         };
     }
     */
-
-    // TODO: This function is a static function for now,
-    // when progress bar is fixed it shouldn't be static
-    // it should also take an another argument i
-    static uploadFile(file) {
-        const url = "/media/upload";
-        const xhr = new XMLHttpRequest();
-        const formData = new FormData();
-        xhr.open("POST", url, true);
-        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
-
-        /*
-        // Update progress (can be used to show progress indicator)
-        xhr.upload.addEventListener("progress", (e) => {
-            this.updateProgress(i, (e.loaded * 100.0 / e.total) || 100);
-        });
-        xhr.addEventListener("readystatechange", () => {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                this.updateProgress(i, 100); // <- Add this
-            } else if (xhr.readyState === 4 && xhr.status !== 200) {
-                // Error. Inform the user
-            }
-        });
-
-        */
-        formData.append("fileToUpload", file);
-        xhr.send(formData);
-    }
-
     constructor(props) {
         super(props);
         this.state = {
-            // uploadProgress: [],
+            uploadProgress: [],
             highlight: false,
         };
 
@@ -60,6 +24,38 @@ export class Upload extends React.Component {
         this.highlight = this.highlight.bind(this);
         this.unhighlight = this.unhighlight.bind(this);
         this.handleDrop = this.handleDrop.bind(this);
+        this.uploadFile = this.uploadFile.bind(this);
+    }
+
+    uploadFile(file, i) {
+        const url = "/media/upload";
+        const xhr = new XMLHttpRequest();
+        const formData = new FormData();
+        xhr.open("POST", url, true);
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+
+        // Update progress (can be used to show progress indicator)
+        xhr.upload.addEventListener("progress", (e) => {
+            const numerator = e.loaded * 100.0;
+            this.updateProgress(i, (numerator / e.total) || 100);
+        });
+        xhr.addEventListener("readystatechange", () => {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                this.updateProgress(i, 100);
+            } else if (xhr.readyState === 4 && xhr.status !== 200) {
+                // Error. Inform the user
+            }
+        });
+
+        formData.append("fileToUpload", file);
+        xhr.send(formData);
+    }
+
+    handleFiles(filesParam) {
+        const files = [...filesParam];
+        this.initializeProgress(files.length);
+        files.forEach(this.uploadFile);
+        // files.forEach(this.previewFile);
     }
 
     highlight(e) {
@@ -73,21 +69,25 @@ export class Upload extends React.Component {
     }
 
     initializeProgress(numFiles) {
+        // Needed to make sure that the upload progress
+        // is reseted between each upload
+        let uploadProgress = this.state;
+        uploadProgress = [];
         this.progressBar.value = 0;
 
         for (let i = numFiles; i > 0; i -= 1) {
-            this.uploadProgress.push(0);
+            uploadProgress.push(0);
         }
     }
 
-    // TODO: uncomment when fixing progressbar
-    /*
     updateProgress(fileNumber, percent) {
-        this.uploadProgress[fileNumber] = percent;
-        const total = this.uploadProgress.reduce((tot, curr) => tot + curr, 0)
-        / this.uploadProgress.length;
+        const { uploadProgress } = this.state;
+
+        uploadProgress[fileNumber] = percent;
+        const total = uploadProgress.reduce((tot, curr) => tot + curr, 0)
+        / uploadProgress.length;
         this.progressBar.value = total;
-    } */
+    }
 
     handleDrop(e) {
         e.persist();
@@ -96,7 +96,7 @@ export class Upload extends React.Component {
         const { files } = dt;
 
         this.unhighlight(e);
-        Upload.handleFiles(files);
+        this.handleFiles(files);
     }
 
     render() {
