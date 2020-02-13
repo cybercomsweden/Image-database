@@ -49,10 +49,7 @@ class InnerSearch extends React.Component {
         event.preventDefault();
         const { userInput } = this.state;
         const newInput = userInput.split(" ");
-        const { history } = this.props;
         newInput[newInput.length - 1] = event.target.dataset.canonicalName;
-        // Updating the url with the searched terms
-        history.push("/media?q=".concat(newInput.join("+")));
         this.setState({
             userInput: newInput.join(" "),
         });
@@ -60,17 +57,19 @@ class InnerSearch extends React.Component {
 
     onKeyDown(event) {
         const { activeOption, userInput } = this.state;
-        const newInput = userInput.split(" ");
+        let newInput = userInput.split(" ");
         const filteredOptions = this.filterOptions(newInput);
         const { history } = this.props;
         if (event.key === "Enter") {
             if (activeOption === -1) {
-                newInput[newInput.length - 1] = "";
-                history.push("/");
-            } else {
-                newInput[newInput.length - 1] = filteredOptions[activeOption].canonical_name;
+                if (newInput[newInput.length - 1] === "") {
+                    newInput = newInput.slice(0, -1);
+                }
                 // Updating the url with the searched terms
                 history.push("/media?q=".concat(newInput.join("+")));
+            } else {
+                newInput[newInput.length - 1] = filteredOptions[activeOption].canonical_name;
+                newInput.push("");
             }
             this.setState({
                 activeOption: -1,
