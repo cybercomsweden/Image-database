@@ -1,14 +1,15 @@
 use anyhow::{anyhow, Context, Result};
 use exif::Reader;
-use image::{DynamicImage, GenericImageView, ImageBuffer};
+use image::{load_from_memory, DynamicImage, GenericImageView, ImageBuffer};
 use std::convert::TryInto;
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::process::Command;
 
 use crate::face_detection::{calc_midpoint, face_detection, largest_bbox, Bbox};
-use crate::metadata::{extract_metadata_video, Rotate, TypeSpecific};
+use crate::metadata::{Metadata, Rotate, TypeSpecific};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MediaType {
@@ -25,6 +26,7 @@ pub enum FileType {
     Png,
     Cr2,
     Nef,
+    Dng,
 }
 
 impl FileType {
@@ -32,7 +34,7 @@ impl FileType {
         match self {
             FileType::Mp4 | FileType::Mov => MediaType::Video,
             FileType::Jpeg | FileType::Png => MediaType::Image,
-            FileType::Cr2 | FileType::Nef => MediaType::RawImage,
+            FileType::Cr2 | FileType::Nef | FileType::Dng => MediaType::RawImage,
         }
     }
 }
@@ -66,8 +68,7 @@ pub fn find_orientation(reader: &Reader) -> Option<Rotate> {
 }
 
 fn get_video_snapshot<P: AsRef<Path>>(orig_path: P) -> Result<DynamicImage> {
-    let metadata =
-        extract_metadata_video(orig_path.as_ref()).context("failed to get metadata, video")?;
+    let metadata = Metadata::from_file(&orig_path)?;
 
     let video_metadata = match metadata.type_specific {
         TypeSpecific::Video(metadata) => metadata,
@@ -114,6 +115,7 @@ pub fn file_type_from_path<P: AsRef<Path>>(path: P) -> Option<FileType> {
         "nef" => Some(FileType::Nef),
         "mov" => Some(FileType::Mov),
         "mp4" => Some(FileType::Mp4),
+        "dng" => Some(FileType::Dng),
         _ => None,
     }
 }
@@ -134,12 +136,11 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     let (img, rotation) = match file_type.media_type() {
         MediaType::Image => (
             image::open(path.as_ref()).context("failed to open image")?,
-            if file_type == FileType::Jpeg {
+            {
                 let file = fs::File::open(&path).unwrap();
-                let reader = exif::Reader::new(&mut std::io::BufReader::new(&file)).unwrap();
-                find_orientation(&reader).unwrap_or(Rotate::Zero)
-            } else {
-                Rotate::Zero
+                exif::Reader::new(&mut std::io::BufReader::new(&file))
+                    .map(|x| find_orientation(&x).unwrap_or(Rotate::Zero))
+                    .unwrap_or(Rotate::Zero)
             },
         ),
         MediaType::RawImage => (
@@ -150,19 +151,24 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     };
 
     let file_name = path.as_ref().file_stem().unwrap();
-
-    let mut img = match rotation {
-        Rotate::Zero => img,
-        Rotate::Cw90 => img.rotate90(),
-        Rotate::Cw180 => img.rotate180(),
-        Rotate::Ccw90 => img.rotate270(),
-    };
+    let img = rotate_image(&img, rotation)?;
 
     fs::create_dir_all("dest")?;
     let dest_path = Path::new("dest");
     let copied_orig = dest_path.join(path.as_ref().file_name().unwrap());
     fs::copy(&path, &copied_orig)?;
 
+    let preview_path = add_suffix(&dest_path.join(file_name), "_preview", ".jpg")?;
+    create_preview(&img, &preview_path)?;
+
+    let thumbnail = create_thumbnail_image(img)?;
+    let thumbnail_path = add_suffix(&dest_path.join(file_name), "_thumbnail", ".jpg")?;
+    thumbnail.save(&thumbnail_path)?;
+
+    Ok((copied_orig, thumbnail_path, preview_path))
+}
+
+fn create_thumbnail_image(mut img: image::DynamicImage) -> Result<DynamicImage> {
     // Detect faces to determine where to optimally crop the image
     let detection = face_detection(&img);
     let thumbnail: image::DynamicImage;
@@ -181,14 +187,13 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
         }
         Err(_) => process::exit(1),
     }
+    Ok(thumbnail)
+}
 
-    let thumbnail_path = add_suffix(&dest_path.join(file_name), "_thumbnail", ".jpg")?;
-    thumbnail.save(&thumbnail_path)?;
-
+fn create_preview<P: AsRef<Path>>(img: &image::DynamicImage, preview_path: &P) -> Result<()> {
     let (width, height) = img.dimensions();
     let mut new_width = 4096;
     let mut new_height = 2160;
-    let preview_path = add_suffix(&dest_path.join(file_name), "_preview", ".jpg")?;
     if width > new_width || height > new_height {
         if height > width {
             let aspect_ratio = width as f32 / height as f32;
@@ -202,6 +207,68 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     } else {
         img.save(&preview_path)?;
     }
+    Ok(())
+}
+
+fn rotate_image(img: &DynamicImage, rotation: Rotate) -> Result<DynamicImage> {
+    let rotated = match rotation {
+        Rotate::Zero => img.clone(),
+        Rotate::Cw90 => img.rotate90(),
+        Rotate::Cw180 => img.rotate180(),
+        Rotate::Ccw90 => img.rotate270(),
+    };
+    Ok(rotated)
+}
+
+pub fn copy_and_create_thumbnail_bytes(
+    file_name: &str,
+    data: &Vec<u8>,
+) -> Result<(PathBuf, PathBuf, PathBuf)> {
+    let slice = data.as_slice();
+
+    fs::create_dir_all("dest")?;
+    let dest_path = Path::new("dest");
+    let copied_orig = dest_path.join(file_name);
+    let file_path_new = format!("./dest/{}", &file_name);
+    let mut file = std::fs::File::create(file_path_new.as_str())?;
+    file.write_all(slice)?;
+
+    let file_type = file_type_from_path(file_name).ok_or(anyhow!("Unknown file type"))?;
+    let (img, rotation) = match file_type.media_type() {
+        MediaType::Image => (
+            load_from_memory(slice)?,
+            exif::Reader::new(&mut std::io::BufReader::new(slice))
+                .map(|x| find_orientation(&x).unwrap_or(Rotate::Zero))
+                .unwrap_or(Rotate::Zero),
+        ),
+        MediaType::RawImage => (
+            open_raw_image(file_path_new).context("failed to open raw image")?,
+            Rotate::Zero,
+        ),
+        MediaType::Video => (
+            match get_video_snapshot(&file_path_new) {
+                Ok(o) => o,
+                Err(e) => {
+                    std::fs::remove_file(file_path_new.as_str())?;
+                    return Err(e.into());
+                }
+            },
+            Rotate::Zero,
+        ),
+    };
+
+    let img = rotate_image(&img, rotation)?;
+
+    let preview_tmp = format!("{}{}{}", file_name, "_preview", ".jpg");
+    let preview_path = dest_path.join(preview_tmp.as_str());
+
+    create_preview(&img, &preview_path)?;
+
+    let thumbnail = create_thumbnail_image(img)?;
+
+    let thumbnail_tmp = format!("{}{}{}", file_name, "_thumbnail", ".jpg");
+    let thumbnail_path = dest_path.join(thumbnail_tmp.as_str());
+    thumbnail.save(&thumbnail_path)?;
 
     Ok((copied_orig, thumbnail_path, preview_path))
 }

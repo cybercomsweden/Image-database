@@ -4,10 +4,10 @@ use chrono::{DateTime, Utc};
 use exif::{In, Reader, Tag, Value};
 use fraction::prelude::Fraction;
 use image::GenericImageView;
-use serde_json::{json, Value as serdeValue};
+use serde_json::{json, Value as SerdeValue};
 use std::convert::TryInto;
 use std::fs;
-use std::process::Command;
+use std::process::{Command, Output};
 
 use crate::coord::{DecDegrees, Location};
 use crate::thumbnail::{file_type_from_path, find_orientation, FileType, MediaType};
@@ -54,9 +54,9 @@ impl Metadata {
         let metadata = if file_type == FileType::Jpeg {
             extract_metadata_image_jpg(&path)?
         } else if file_type.media_type() == MediaType::Video {
-            extract_metadata_video(&path)?
+            get_video_json_data_from_path(&path)?
         } else {
-            let width = 0;
+            let width = 0; //TODO: can get these if we open the image
             let height = 0;
             let date_time = None;
             let gps_location = None;
@@ -76,7 +76,7 @@ impl Metadata {
     }
 }
 
-fn json_as_u64(json: &serde_json::Map<String, serdeValue>, key: &str) -> Result<u64> {
+fn json_as_u64(json: &serde_json::Map<String, SerdeValue>, key: &str) -> Result<u64> {
     Ok(json.get(key).map(|x| x.as_u64()).flatten().ok_or(anyhow!(
         "Key {} does not exist, or it is not an integer",
         key
@@ -84,9 +84,9 @@ fn json_as_u64(json: &serde_json::Map<String, serdeValue>, key: &str) -> Result<
 }
 
 fn json_as_object<'a>(
-    json: &'a serde_json::Map<String, serdeValue>,
+    json: &'a serde_json::Map<String, SerdeValue>,
     key: &str,
-) -> Result<&'a serde_json::Map<String, serdeValue>> {
+) -> Result<&'a serde_json::Map<String, SerdeValue>> {
     Ok(json
         .get(key)
         .map(|x| x.as_object())
@@ -233,8 +233,22 @@ fn gps_image(reader: &Reader) -> Option<Location> {
 
 pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
     let file = fs::File::open(path.as_ref())?;
-    let reader = Reader::new(&mut std::io::BufReader::new(&file))?;
-
+    let reader = Reader::new(&mut std::io::BufReader::new(&file));
+    // We do this to make sure that we can atleast extract height and width if there is not exif
+    // data to extract
+    if reader.is_err() {
+        let img = image::open(path.as_ref())?;
+        let dim = img.dimensions();
+        return Ok(Metadata {
+            width: dim.0,
+            height: dim.1,
+            date_time: None,
+            gps_location: None,
+            rotation: None,
+            type_specific: TypeSpecific::Image(Default::default()),
+        });
+    }
+    let reader = reader.unwrap();
     let date_time = field_as_string(&reader, Tag::DateTime);
     let date_time = date_time
         .and_then(|date_time| NaiveDateTime::parse_from_str(&date_time, "%Y-%m-%d %H:%M:%S").ok());
@@ -265,17 +279,22 @@ pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<
     })
 }
 
-pub fn extract_metadata_video<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
+// This function is used when importing files from the terminal
+fn get_video_json_data_from_path<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
     let file_name = path.as_ref().as_os_str();
-    let proc = Command::new("ffprobe")
-        .args(&["-v", "quiet"])
-        .args(&["-print_format", "json"])
-        .args(&["-show_format"])
-        .args(&["-show_streams"])
-        .arg(file_name)
-        .output()?;
+    Ok(extract_metadata_video(
+        &Command::new("ffprobe")
+            .args(&["-v", "quiet"])
+            .args(&["-print_format", "json"])
+            .args(&["-show_format"])
+            .args(&["-show_streams"])
+            .arg(file_name)
+            .output()?,
+    )?)
+}
 
-    let json_output: serdeValue = serde_json::from_str(std::str::from_utf8(&proc.stdout)?)?;
+fn extract_metadata_video(output: &Output) -> Result<Metadata> {
+    let json_output: SerdeValue = serde_json::from_str(std::str::from_utf8(&output.stdout)?)?;
     let raw_metadata = json_output
         .as_object()
         .ok_or(anyhow!("Not a JSON object"))?;

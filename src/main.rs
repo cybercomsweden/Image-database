@@ -1,15 +1,13 @@
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
-use actix_web::{
-    middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
-};
+use actix_web::{middleware::Logger, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
 use futures::{FutureExt, Stream, StreamExt};
 use prost::Message;
 use serde::Deserialize;
 use std::convert::TryFrom;
-use std::io::Write;
-use std::path::PathBuf;
+use std::convert::TryInto;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
 use walkdir::WalkDir;
@@ -33,9 +31,20 @@ use crate::hash::Sha3;
 use crate::metadata::Metadata;
 use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::tags::{add_parent, list_tags, remove_parent, search_tags, tag_image};
-use crate::thumbnail::{copy_and_create_thumbnail, file_type_from_path, FileType, MediaType};
+use crate::thumbnail::{
+    copy_and_create_thumbnail, copy_and_create_thumbnail_bytes, file_type_from_path, FileType,
+    MediaType,
+};
 
 type DbConn = Client;
+
+fn get_media_type<P: AsRef<Path>>(path: P) -> Result<EntityType> {
+    let file_type = file_type_from_path(path).ok_or(anyhow!("Unknown file type"))?;
+    match file_type.media_type() {
+        MediaType::Image | MediaType::RawImage => Ok(EntityType::Image),
+        MediaType::Video => Ok(EntityType::Video),
+    }
+}
 
 /// Helper method to access database the database in a request handler. Use by
 /// adding `db: web::Data<DbConn>` to your request handler's argument list.
@@ -81,28 +90,71 @@ async fn static_file(req: HttpRequest) -> Result<NamedFile> {
     }
 }
 
-async fn save_file(mut payload: Multipart) -> std::result::Result<HttpResponse, Error> {
+async fn save_file(db: web::Data<DbConn>, mut payload: Multipart) -> Result<impl Responder> {
     // iterate over multipart stream
     while let Some(item) = payload.next().await {
-        let mut field = item?;
+        let mut field = item.map_err(|x| anyhow!("{}", x))?;
         let content_type = field.content_disposition().unwrap();
         if content_type.get_name() != Some("fileToUpload") {
             continue;
         }
-        let filename = content_type.get_filename().unwrap();
-        let filepath = format!("./uploadedFiles/{}", filename);
-        // File::create is blocking operation, use threadpool
-        let mut f = web::block(|| std::fs::File::create(filepath))
-            .await
-            .unwrap();
+        let file_name = content_type.get_filename().unwrap();
+
         // Field in turn isstream of *Bytes* object
+        let mut image_chunks: Vec<u8> = Vec::new();
         while let Some(chunk) = field.next().await {
             let data = chunk.unwrap();
-            // filesystem  operations are blocking, we have to use threadpool
-            f = web::block(move || f.write_all(&data).map(|_| f)).await?;
+            image_chunks.append(&mut data.to_vec());
         }
+
+        if file_type_from_path(&file_name).is_none() {
+            println!("Ignoring {:?}", file_name);
+            continue;
+        }
+
+        let sha3 = Sha3::from_reader(image_chunks.as_slice()).await?;
+        if let Some(e) = Entity::get_from_sha3(&db, &sha3).await {
+            println!("{:?} is already imported (id {})", file_name, e.id);
+            continue;
+        }
+
+        println!("Making thumbnail for {:?}", &file_name);
+        let (img, thumbnail, preview) =
+            match copy_and_create_thumbnail_bytes(file_name, &image_chunks) {
+                Ok((i, t, p)) => (i, t, p),
+                Err(err) => {
+                    println!("Failed: {}", err);
+                    continue;
+                }
+            };
+
+        let path = format!("./dest/{}", &file_name);
+
+        let mut created = None;
+        let mut location = None;
+
+        if let Ok(metadata) = Metadata::from_file(&path) {
+            created = metadata.date_time;
+            location = metadata.gps_location;
+        }
+
+        let media_type = get_media_type(&path)?;
+
+        let entity = Entity::insert(
+            &db,
+            media_type,
+            &img,
+            &thumbnail,
+            &preview,
+            image_chunks.len().try_into().unwrap(),
+            &sha3,
+            &created,
+            &location,
+        )
+        .await?;
+        dbg!(entity);
     }
-    Ok(HttpResponse::Ok().into())
+    Ok(HttpResponse::Ok())
 }
 
 #[derive(Debug, Deserialize)]
@@ -259,15 +311,15 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
             }
         };
 
-        let metadata = Metadata::from_file(&path)?;
-        let created = metadata.date_time;
-        let location = metadata.gps_location;
+        let mut created = None;
+        let mut location = None;
 
-        let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
-        let media_type = match file_type.media_type() {
-            MediaType::Image | MediaType::RawImage => EntityType::Image,
-            MediaType::Video => EntityType::Video,
-        };
+        if let Ok(metadata) = Metadata::from_file(&path) {
+            created = metadata.date_time;
+            location = metadata.gps_location;
+        }
+
+        let media_type = get_media_type(&path)?;
 
         let entity = Entity::insert(
             &client,
