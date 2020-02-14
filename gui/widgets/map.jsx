@@ -59,7 +59,7 @@ export class Map extends React.Component {
         const { lng, lat, zoom } = this.props;
         this.map.setZoom(zoom);
         this.map.setCenter([lng, lat]);
-        new mapboxgl.Marker()
+        this.marker = new mapboxgl.Marker()
             .setLngLat([lng, lat])
             .addTo(this.map);
     }
@@ -67,6 +67,7 @@ export class Map extends React.Component {
     componentDidUpdate({ lng: prevLng, lat: prevLat, zoom: prevZoom }) {
         const { lng, lat, zoom } = this.props;
         if (prevLng !== lng || prevLat !== lat || prevZoom !== zoom) {
+            this.marker.setLngLat([lng, lat]);
             this.map.setZoom(zoom);
             this.map.setCenter([lng, lat]);
         }
