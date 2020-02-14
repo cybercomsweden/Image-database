@@ -368,7 +368,20 @@ impl Tag {
                 )
             })
             .collect();
-        let query = list.join(" INTERSECT ");
+        let query = format!(
+            "
+                SELECT {}
+                FROM (
+                    SELECT DISTINCT ON(id) {}
+                    FROM ({}) e
+                    ORDER BY id
+                ) e
+                ORDER BY created
+            ",
+            Entity::COLS.join(", "),
+            Entity::COLS.join(", "),
+            list.join(" INTERSECT "),
+        );
         Ok(client
             .query_raw(query.as_str(), tags.iter().map(|x| x as &dyn ToSql))
             .await?
