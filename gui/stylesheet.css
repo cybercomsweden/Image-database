@@ -324,3 +324,43 @@ ul.options li {
   position:absolute;
   left: calc(50% - 5vh);
 }
+
+.tag-list {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+    font-size: 1.5rem;
+    color: rgba(0, 0, 0, 0.3);
+}
+
+.tag-list a {
+    color: #0889ef;
+    text-decoration: none;
+    transition: all 0.2s ease-out;
+}
+
+.tag-list a:hover {
+    padding-left: 16px;
+}
+
+.tag-list li {
+    margin-top: 32px;
+}
+
+.tag-list .tag-list li {
+    margin-top: 8px;
+}
+
+.tag-list .tag-list {
+    padding-left: 32px;
+    font-size: 0.8em;
+    list-style-type: disclosure-closed;
+}
+
+.tag-list .tag-list .tag-list {
+    list-style-type: none;
+}
+
+.tag-list .tag-list .tag-list .tag-list {
+    font-size: 1em;
+}

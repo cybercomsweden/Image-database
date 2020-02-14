@@ -133,7 +133,11 @@ impl TryFrom<DbTag> for Tag {
     fn try_from(db_tag: DbTag) -> Result<Tag> {
         let mut tag = Tag::default();
         tag.id = db_tag.id.try_into()?;
-        //tag.pid = db_tag.pid.try_into()?; // TODO: Optional
+
+        if let Some(pid) = db_tag.pid {
+            tag.pid = pid.try_into()?;
+        }
+
         tag.canonical_name = db_tag.canonical_name.try_into()?;
         tag.name = db_tag.name.try_into()?;
         Ok(tag)

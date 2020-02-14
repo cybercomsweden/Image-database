@@ -2,6 +2,16 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Tags as ApiTags } from "./api.js";
 
+function cmp(a, b) {
+    if (a < b) {
+        return -1;
+    }
+    if (a > b) {
+        return 1;
+    }
+    return 0;
+}
+
 export class Tags extends React.Component {
     constructor(props) {
         super(props);
@@ -18,6 +28,28 @@ export class Tags extends React.Component {
         this.setState({ tags: await ApiTags.fetch() });
     }
 
+    getSubTree(pid) {
+        const { tags: { tag: tags } } = this.state;
+        const children = tags.filter((tag) => tag.pid === pid);
+        children.sort((tagA, tagB) => cmp(tagA.name.toLowerCase(), tagB.name.toLowerCase()));
+        if (!children.length) {
+            return null;
+        }
+
+        const childNodes = [];
+        for (const child of children) {
+            const dest = "/media?q=".concat(child.canonical_name);
+            childNodes.push(
+                <li>
+                    <Link key={child.canonical_name} to={dest}>{child.name}</Link>
+                    {this.getSubTree(child.id)}
+                </li>,
+            );
+        }
+
+        return <ul className="tag-list">{childNodes}</ul>;
+    }
+
     render() {
         const { tags: tagsPb } = this.state;
         if (tagsPb === null) {
@@ -26,21 +58,6 @@ export class Tags extends React.Component {
         if (!tagsPb.tag.length) {
             return "No tags yet";
         }
-        const tags = [];
-        for (const tag of tagsPb.tag) {
-            const dest = "media?q=".concat(tag.canonical_name);
-            tags.push(
-                <Link key={tag.canonical_name} to={dest}>
-                    <div>
-                        {tag.canonical_name}
-                    </div>
-                </Link>,
-            );
-        }
-        return (
-            <div className="tag-list">
-                {tags}
-            </div>
-        );
+        return this.getSubTree(0);
     }
 }
