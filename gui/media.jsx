@@ -70,14 +70,25 @@ function Chevron(props) {
     );
 }
 
-function PlayButton() {
-    return (
-        <svg className="video-overlay-play-button" width="75px" height="75" viewBox="0 0 213.7 213.7" enableBackground="new 0 0 213.7 213.7">
-            <polygon className="triangle" id="XMLID_18_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" points="73.5,62.5 148.5,105.8 73.5,149.1 " />
-            <circle className="circle" id="XMLID_17_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" cx="106.8" cy="106.8" r="103.3" />
-        </svg>
+class PlayButton extends React.Component {
+    constructor(props) {
+        super(props);
+        this.handleClick = this.handleClick.bind(this);
+    }
 
-    );
+    handleClick() {
+        const { onClick } = this.props;
+        onClick();
+    }
+
+    render() {
+        return (
+            <svg onClick={this.handleClick} className="video-overlay-play-button" width="75px" height="75" viewBox="0 0 213.7 213.7" enableBackground="new 0 0 213.7 213.7">
+                <polygon className="triangle" id="XMLID_18_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" points="73.5,62.5 148.5,105.8 73.5,149.1 " />
+                <circle className="circle" id="XMLID_17_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" cx="106.8" cy="106.8" r="103.3" />
+            </svg>
+        );
+    }
 }
 
 function Metadata(props) {
@@ -225,13 +236,30 @@ function MapLogo({ width, height }) {
     );
 }
 
+function VideoPlayer(props) {
+    const { entity } = props;
+    return (
+        // eslint-disable-next-line jsx-a11y/media-has-caption
+        <video
+            className="preview"
+            src={`/assets/${entity.path}`}
+            controls
+            autoPlay
+        />
+    );
+}
+
 class Pic extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             entity: null,
+            playClicked: false,
         };
+
+        this.handlePlayClick = this.handlePlayClick.bind(this);
     }
+
 
     componentDidMount() {
         this.getEntity();
@@ -240,6 +268,8 @@ class Pic extends React.Component {
     componentDidUpdate(previousProps) {
         const { entity } = this.props;
         if (previousProps.entity.id !== entity.id) {
+            // eslint-disable-next-line react/no-did-update-set-state
+            this.setState({ playClicked: false });
             this.getEntity();
         }
     }
@@ -247,6 +277,10 @@ class Pic extends React.Component {
     async getEntity() {
         const { entity } = this.props;
         this.setState({ entity: await Entity.fetch(entity.id) });
+    }
+
+    handlePlayClick() {
+        this.setState({ playClicked: true });
     }
 
     render() {
@@ -299,8 +333,18 @@ class Pic extends React.Component {
         }
 
         let overlay = null;
-        if (simpleEntity.media_type === Entity.EntityType.VIDEO.value) {
-            overlay = <PlayButton />;
+        const { playClicked } = this.state;
+        if (simpleEntity.media_type === Entity.EntityType.VIDEO.value && !playClicked) {
+            overlay = <PlayButton onClick={this.handlePlayClick} entity={simpleEntity} />;
+        }
+
+        let previewImg = null;
+        let videoPlayer = null;
+        if (!playClicked) {
+            previewImg = <img className="preview" src={`/assets/${simpleEntity.preview_path}`} alt="" />;
+        }
+        if (playClicked) {
+            videoPlayer = <VideoPlayer entity={simpleEntity} />;
         }
 
         return (
@@ -322,7 +366,8 @@ class Pic extends React.Component {
                             </PreserveQueryParamsLink>
                         )
                     }
-                    <img className="preview" src={`/assets/${simpleEntity.preview_path}`} alt="" />
+                    {previewImg}
+                    {videoPlayer}
                     {overlay}
                     {
                         nextEntity != null && (
