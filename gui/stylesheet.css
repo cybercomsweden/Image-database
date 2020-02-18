@@ -364,3 +364,47 @@ ul.options li {
 .tag-list .tag-list .tag-list .tag-list {
     font-size: 1em;
 }
+
+.content {
+    width: 95%;
+}
+
+.media-thumbnail-list {
+    grid-template-columns: auto;
+}
+
+@media only screen and (min-width: 700px) {
+    .content {
+        width: 650px;
+    }
+    .media-thumbnail-list {
+        grid-template-columns: auto auto;
+    }
+}
+
+@media only screen and (min-width: 1050px) {
+    .content {
+        width: 1000px;
+    }
+    .media-thumbnail-list {
+        grid-template-columns: auto auto auto;
+    }
+}
+
+@media only screen and (min-width: 1400px) {
+    .content {
+        width: 1350px;
+    }
+    .media-thumbnail-list {
+        grid-template-columns: auto auto auto auto;
+    }
+}
+
+@media only screen and (min-width: 1750px) {
+    .content {
+        width: 1700px;
+    }
+    .media-thumbnail-list {
+        grid-template-columns: auto auto auto auto auto;
+    }
+}
