@@ -163,24 +163,25 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     let copied_orig = dest_path.join(path.as_ref().file_name().unwrap());
     fs::copy(&path, &copied_orig)?;
 
+    // Detect faces to determine where to optimally crop the image
     let detection = face_detection(&img);
-    let tmp: image::DynamicImage;
+    let thumbnail: image::DynamicImage;
     match detection {
         Ok(faces) => {
-            // only carve if we do not have any visible faces in the image
             if faces.len() == 0 {
-                tmp = seam_carving(&img);
+                thumbnail = img.resize_to_fill(300, 200, image::FilterType::CatmullRom);
             } else {
+                // Look for the largest face in the image and try to preserve it in the thumbnail
                 let largest_bbox = largest_bbox(faces);
                 let (start_x, start_y, new_width, new_height) =
                     calc_new_measurements(&img, largest_bbox);
-                tmp = img.crop(start_x, start_y, new_width, new_height);
+                let tmp = img.crop(start_x, start_y, new_width, new_height);
+                thumbnail = tmp.resize_exact(300, 200, image::FilterType::CatmullRom);
             }
         }
         Err(_) => process::exit(1),
     }
 
-    let thumbnail = tmp.resize_exact(300, 200, image::FilterType::CatmullRom);
     let thumbnail_path = add_suffix(&dest_path.join(file_name), "_thumbnail", ".jpg")?;
     thumbnail.save(&thumbnail_path)?;
 
@@ -203,21 +204,6 @@ pub fn copy_and_create_thumbnail<P: AsRef<Path>>(path: P) -> Result<(PathBuf, Pa
     }
 
     Ok((copied_orig, thumbnail_path, preview_path))
-}
-
-fn seam_carving(img: &image::DynamicImage) -> image::DynamicImage {
-    let (width, height) = img.dimensions();
-    let aspect_ratio = width as f32 / height as f32;
-    if aspect_ratio as f32 == 1.5 {
-        // already 3:2 format
-        return img.clone();
-    } else if aspect_ratio as f32 > 1.5 {
-        let new_width = (height as f32 * 1.5).ceil() as u32;
-        return DynamicImage::ImageRgba8(seamcarving::resize(img, new_width, height));
-    } else {
-        let new_height = (width as f32 / 1.5).ceil() as u32;
-        return DynamicImage::ImageRgba8(seamcarving::resize(img, width, new_height));
-    }
 }
 
 // return a tuple with (start_x, start_y, width, height)
