@@ -12,6 +12,7 @@ use tokio_postgres::{Client, Row};
 use super::types::{EntityType, TagType};
 use crate::coord::Location;
 use crate::error::Result;
+use crate::hash::Sha3;
 
 #[derive(Debug, PartialEq)]
 pub struct Entity {
@@ -22,7 +23,7 @@ pub struct Entity {
     pub preview_path: PathBuf,
     pub uploaded: DateTime<Utc>,
     pub size: u64,
-    pub sha3: [u8; 32],
+    pub sha3: Sha3,
     pub created: Option<DateTime<Utc>>,
     pub location: Option<Location>,
 }
@@ -63,7 +64,7 @@ impl Entity {
         thumbnail_path: P2,
         preview_path: P3,
         size: u64,
-        sha3: &[u8; 32],
+        sha3: &Sha3,
         created: &Option<DateTime<Utc>>,
         location: &Option<Location>,
     ) -> Result<Self>
@@ -181,7 +182,7 @@ impl Entity {
             thumbnail_path: Path::new(row.try_get::<_, &str>(3)?).to_path_buf(),
             preview_path: Path::new(row.try_get::<_, &str>(4)?).to_path_buf(),
             size: row.try_get::<_, i64>(5)?.try_into()?,
-            sha3: row.try_get::<_, &[u8]>(6)?.try_into()?,
+            sha3: Sha3::try_from_slice(row.try_get::<_, &[u8]>(6)?)?,
             uploaded: row.try_get::<_, DateTime<Utc>>(7)?,
             created: row.try_get::<_, Option<DateTime<Utc>>>(8)?,
             location: row.try_get::<_, Option<Location>>(9)?,
@@ -216,7 +217,7 @@ impl Entity {
         Self::from_row(&row).ok()
     }
 
-    pub async fn get_from_sha3(client: &Client, sha3: &[u8; 32]) -> Option<Self> {
+    pub async fn get_from_sha3(client: &Client, sha3: &Sha3) -> Option<Self> {
         let row = client
             .query_opt(
                 format!(

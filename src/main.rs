@@ -4,15 +4,12 @@ use actix_web::{
     middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use anyhow::anyhow;
-use async_std::fs::File as AsyncFile;
-use async_std::io::ReadExt;
 use futures::{FutureExt, Stream, StreamExt};
 use prost::Message;
 use serde::Deserialize;
-use sha3::digest::Digest;
 use std::convert::TryFrom;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::pin::Pin;
 use tokio_postgres::{Client, Config as PostgresConfig, NoTls};
 use walkdir::WalkDir;
@@ -23,6 +20,7 @@ mod config;
 mod coord;
 mod error;
 mod face_detection;
+mod hash;
 mod metadata;
 mod model;
 mod tags;
@@ -31,6 +29,7 @@ mod thumbnail;
 use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
+use crate::hash::Sha3;
 use crate::metadata::Metadata;
 use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::tags::{add_parent, list_tags, remove_parent, search_tags, tag_image};
@@ -224,21 +223,6 @@ async fn run_server(config: Config) -> Result<()> {
     .await?)
 }
 
-async fn sha3_256_file<P: AsRef<Path>>(path: P) -> Result<[u8; 32]> {
-    let mut file = AsyncFile::open(path.as_ref().to_owned()).await?;
-    let mut buf = [0u8; 4096]; // Use 4096 as the buffer size
-    let mut hasher = sha3::Sha3_256::new();
-    loop {
-        let buf_len = file.read(&mut buf).await?;
-        if buf_len == 0 {
-            break;
-        }
-        hasher.input(&buf[..buf_len]);
-    }
-
-    Ok(hasher.result().into())
-}
-
 async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<()> {
     for path in src_dirs
         .iter()
@@ -260,7 +244,7 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
         };
 
         // Calculate SHA-3 to see if the file is already imported
-        let sha3 = sha3_256_file(&path).await?;
+        let sha3 = Sha3::from_path(&path).await?;
         if let Some(e) = Entity::get_from_sha3(&client, &sha3).await {
             println!("{:?} is already imported (id {})", path, e.id);
             continue;
