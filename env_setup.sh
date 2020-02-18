@@ -1,8 +1,19 @@
 #!/bin/bash
 
-if [[ $(id -u) -ne 0 || $(logname) == "root" ]]; then
+if [[ $(id -u) -ne 0 ]]; then
     echo "Script must be run as root. Please re-run with 'sudo $0'"
     exit 1
+fi
+
+# logname doesn't work on WSL
+REALUSER=$(logname 2>/dev/null)
+if [[ "$REALUSER" == "" || "$REALUSER" == "root" ]]; then
+    if [[ "$1" == "" ]]; then
+        echo "You are likely running this script from within WSL."
+        echo "If so you must specify the your username as the first argument (sudo $0 <username>)"
+        exit 1
+    fi
+    REALUSER="$1"
 fi
 
 if [[ ! -f /etc/os-release ]]; then
@@ -12,8 +23,6 @@ fi
 
 # Exit on errors
 set -e
-
-USER=$(logname)
 
 source /etc/os-release
 
@@ -42,19 +51,19 @@ esac
 
 
 if [[ $(sudo -u postgres psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres'" 2>/dev/null) -ne 1 ]]; then
-    echo "Creating PostgreSQL user for $USER"
-    sudo -u postgres createuser -drs $USER
+    echo "Creating PostgreSQL user for $REALUSER"
+    sudo -u postgres createuser -drs $REALUSER
 fi
 
 if [[ $(sudo -u postgres psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='backlog'" 2>/dev/null) -ne 1 ]]; then
     echo "Creating database 'backlog'"
-    sudo -u $USER createdb backlog
+    sudo -u $REALUSER createdb backlog
     cargo run init-db
 fi
 
 if [ ! -L .git/hooks/pre-commit ]; then
     echo "Installing pre-commit hook"
-    sudo -u $USER ln -s ../../pre-commit .git/hooks/pre-commit
+    sudo -u $REALUSER ln -s ../../pre-commit .git/hooks/pre-commit
 fi
 
 if [ ! -d node_modules/ ]; then
