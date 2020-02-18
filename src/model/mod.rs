@@ -4,4 +4,4 @@ mod types;
 
 pub use self::mapper::{Entity, Tag, TagToEntity};
 pub use self::schema::create_schema;
-pub use self::types::{EntityType, TagType};
+pub use self::types::EntityType;

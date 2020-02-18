@@ -1,11 +1,8 @@
-use anyhow::anyhow;
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, Kind, ToSql, Type};
-use std::convert::TryFrom;
 use std::error::Error as ErrorTrait;
 
 use crate::coord::Location;
-use crate::error::{Error, Result};
 
 #[derive(Clone, Debug, PartialEq, FromSql, ToSql)]
 #[postgres(name = "entity_type")]
@@ -15,22 +12,6 @@ pub enum EntityType {
 
     #[postgres(name = "video")]
     Video,
-}
-
-#[derive(Clone, Debug, PartialEq, FromSql, ToSql)]
-#[postgres(name = "tag_type")]
-pub enum TagType {
-    #[postgres(name = "person")]
-    Person,
-
-    #[postgres(name = "place")]
-    Place,
-
-    #[postgres(name = "event")]
-    Event,
-
-    #[postgres(name = "other")]
-    Other,
 }
 
 impl ToSql for Location {
@@ -74,19 +55,5 @@ impl<'a> FromSql<'a> for Location {
 
     fn accepts(ty: &Type) -> bool {
         ty.kind() == &Kind::Simple && ty.name() == "geography"
-    }
-}
-
-impl TryFrom<&str> for TagType {
-    type Error = Error;
-    fn try_from(from: &str) -> Result<Self> {
-        let from = from.to_lowercase();
-        match from.as_str() {
-            "person" => Ok(TagType::Person),
-            "place" => Ok(TagType::Place),
-            "event" => Ok(TagType::Event),
-            "other" => Ok(TagType::Other),
-            _ => Err(anyhow!("Invalid tag").into()),
-        }
     }
 }

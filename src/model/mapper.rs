@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{Client, Row};
 
-use super::types::{EntityType, TagType};
+use super::types::EntityType;
 use crate::coord::Location;
 use crate::error::Result;
 use crate::hash::Sha3;
@@ -34,7 +34,6 @@ pub struct Tag {
     pub pid: Option<i32>,
     pub canonical_name: String,
     pub name: String,
-    pub tag_type: TagType,
 }
 
 #[derive(Debug, PartialEq)]
@@ -249,7 +248,7 @@ impl Entity {
 }
 
 impl Tag {
-    pub const COLS: [&'static str; 5] = ["id", "pid", "canonical_name", "name", "type"];
+    pub const COLS: [&'static str; 4] = ["id", "pid", "canonical_name", "name"];
 
     pub fn from_row(row: &Row) -> Result<Self> {
         Ok(Self {
@@ -257,7 +256,6 @@ impl Tag {
             pid: row.try_get::<_, Option<i32>>(1)?,
             canonical_name: row.try_get::<_, String>(2)?,
             name: row.try_get::<_, String>(3)?,
-            tag_type: row.try_get::<_, TagType>(4)?,
         })
     }
 
@@ -268,13 +266,7 @@ impl Tag {
         Ok(name.to_lowercase())
     }
 
-    pub async fn insert(
-        client: &Client,
-        name: &str,
-        tag_type: &str,
-        parent: Option<String>,
-    ) -> Result<Self> {
-        let tag = TagType::try_from(tag_type)?;
+    pub async fn insert(client: &Client, name: &str, parent: Option<String>) -> Result<Self> {
         let pid = match parent {
             None => None,
             Some(parent) => Some(
@@ -296,7 +288,7 @@ impl Tag {
                         Self::COLS.join(", "),
                     )
                     .as_str(),
-                    &[&pid, &Self::canonical_name(&name)?, &name, &tag],
+                    &[&pid, &Self::canonical_name(&name)?, &name],
                 )
                 .await?,
         )?)
@@ -405,13 +397,7 @@ impl Tag {
                     Self::COLS.join(", "),
                 )
                 .as_str(),
-                &[
-                    &self.pid,
-                    &self.name,
-                    &self.canonical_name,
-                    &self.tag_type,
-                    &self.id,
-                ],
+                &[&self.pid, &self.name, &self.canonical_name, &self.id],
             )
             .await?;
         Ok(())

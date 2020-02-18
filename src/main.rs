@@ -320,20 +320,10 @@ async fn main() -> Result<()> {
         Cmd::Search { tags } => {
             dbg!(search_tags(&get_db(config).await?, &tags).await?);
         }
-        Cmd::Tag(SubCmdTag::Add {
-            name,
-            tag_type,
-            parent,
-        }) => {
+        Cmd::Tag(SubCmdTag::Add { name, parent }) => {
             println!(
                 "{:#?}",
-                Tag::insert(
-                    &get_db(config).await?,
-                    name.as_str(),
-                    tag_type.as_str(),
-                    parent,
-                )
-                .await?
+                Tag::insert(&get_db(config).await?, name.as_str(), parent,).await?
             );
         }
         Cmd::Tag(SubCmdTag::List) => {

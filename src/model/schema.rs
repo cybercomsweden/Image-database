@@ -59,7 +59,6 @@ pub async fn create_schema(client: &Client) -> Result<()> {
                     pid integer references tag(id),
                     canonical_name varchar NOT NULL,
                     name varchar NOT NULL,
-                    type tag_type NOT NULL,
                     unique (canonical_name)
                 )
             ",

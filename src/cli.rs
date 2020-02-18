@@ -40,10 +40,6 @@ pub enum SubCmdTag {
         #[structopt(short = "n", long = "name")]
         name: String,
 
-        /// Type of tag, may be "person", "event", "place" or "other"
-        #[structopt(short = "t", long = "type")]
-        tag_type: String,
-
         /// ID of parent tag. If not provided the tag is considered a top level tag
         #[structopt(short = "p", long = "parent")]
         parent: Option<String>,
