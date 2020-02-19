@@ -3,14 +3,14 @@ use chrono::NaiveDateTime;
 use chrono::{DateTime, Utc};
 use exif::{In, Reader, Tag, Value};
 use fraction::prelude::Fraction;
-use image::GenericImageView;
 use serde_json::{json, Value as SerdeValue};
 use std::convert::TryInto;
 use std::fs;
+use std::path::Path;
 use std::process::{Command, Output};
 
 use crate::coord::{DecDegrees, Location};
-use crate::thumbnail::{file_type_from_path, find_orientation, FileType, MediaType};
+use crate::thumbnail::{file_type_from_path, find_orientation, MediaType};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Rotate {
@@ -49,29 +49,28 @@ pub enum TypeSpecific {
 }
 
 impl Metadata {
-    pub fn from_file<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Metadata> {
         let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
-        let metadata = if file_type == FileType::Jpeg {
-            extract_metadata_image_jpg(&path)?
-        } else if file_type.media_type() == MediaType::Video {
-            get_video_json_data_from_path(&path)?
-        } else {
-            let width = 0; //TODO: can get these if we open the image
-            let height = 0;
-            let date_time = None;
-            let gps_location = None;
-            let rotation = None;
-            let type_specific = TypeSpecific::Image(ImageMetadata::default());
-            Metadata {
-                width,
-                height,
-                date_time,
-                gps_location,
-                rotation,
-                type_specific,
-            }
-        };
 
+        let metadata = match file_type.media_type() {
+            MediaType::Image => {
+                extract_exif_metadata(&path).or_else(|_| simple_metadata_from_image(&path))?
+            }
+            MediaType::RawImage => {
+                let mut metadata = extract_exif_metadata(&path)
+                    .or_else(|_| simple_metadata_from_raw_image(&path))?;
+
+                // Currently width and height may not be correctly detected for some formats
+                if metadata.width < 600 || metadata.height < 400 {
+                    let simple_metadata = simple_metadata_from_raw_image(&path)?;
+                    metadata.width = simple_metadata.width;
+                    metadata.height = simple_metadata.height;
+                }
+
+                metadata
+            }
+            MediaType::Video => extract_video_metadata_from_path(&path)?,
+        };
         Ok(metadata)
     }
 }
@@ -139,7 +138,7 @@ fn field_as_uint(reader: &Reader, tag: Tag) -> Option<u32> {
     reader.get_field(tag, In::PRIMARY)?.value.get_uint(0)
 }
 
-fn width_and_height<P: AsRef<std::path::Path>>(path: P, reader: &Reader) -> Result<(u32, u32)> {
+fn width_and_height(reader: &Reader) -> Result<(u32, u32)> {
     let mut width = field_as_uint(&reader, Tag::ImageLength);
     let mut height = field_as_uint(&reader, Tag::ImageWidth);
 
@@ -148,10 +147,9 @@ fn width_and_height<P: AsRef<std::path::Path>>(path: P, reader: &Reader) -> Resu
         height = field_as_uint(&reader, Tag::PixelYDimension);
     }
 
-    if width.is_none() || height.is_none() {
-        Ok(image::open(path.as_ref())?.dimensions())
-    } else {
-        Ok((width.unwrap(), height.unwrap()))
+    match (width, height) {
+        (Some(w), Some(h)) => Ok((w, h)),
+        _ => Err(anyhow!("Failed to extract image width or height").into()),
     }
 }
 
@@ -166,25 +164,21 @@ fn exposure_time(reader: &Reader) -> Option<Fraction> {
 }
 
 fn aperture(reader: &Reader) -> Option<f32> {
-    let field = &reader.get_field(Tag::ApertureValue, In::PRIMARY)?.value;
-    let aperture = if let Value::Rational(ap) = field {
-        // Note: this will panic if no aperture val present
-        Some((ap[0].num as f32 / (2.0 * ap[0].denom as f32)).exp2())
-    } else {
-        None
-    };
-
-    if aperture.is_none() {
-        let field = &reader.get_field(Tag::FNumber, In::PRIMARY)?.value;
-        if let Value::Rational(f_val) = field {
-            // Note: this will panic if no fnumber val present
-            Some(f_val[0].num as f32 / f_val[0].denom as f32)
-        } else {
-            None
+    if let Some(field) = &reader.get_field(Tag::ApertureValue, In::PRIMARY) {
+        if let Value::Rational(ref ap) = field.value {
+            // Note: this will panic if no aperture val present
+            return Some((ap[0].num as f32 / (2.0 * ap[0].denom as f32)).exp2());
         }
-    } else {
-        aperture
     }
+
+    if let Some(field) = &reader.get_field(Tag::FNumber, In::PRIMARY) {
+        if let Value::Rational(ref ap) = field.value {
+            // Note: this will panic if no aperture val present
+            return Some((ap[0].num as f32 / (2.0 * ap[0].denom as f32)).exp2());
+        }
+    }
+
+    None
 }
 
 fn flash(reader: &Reader) -> Option<bool> {
@@ -231,24 +225,34 @@ fn gps_image(reader: &Reader) -> Option<Location> {
     }
 }
 
-pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
+pub fn simple_metadata_from_image<P: AsRef<Path>>(path: P) -> Result<Metadata> {
+    let (width, height) = image::image_dimensions(path.as_ref())?;
+    return Ok(Metadata {
+        width,
+        height,
+        date_time: None,
+        gps_location: None,
+        rotation: None,
+        type_specific: TypeSpecific::Image(Default::default()),
+    });
+}
+
+pub fn simple_metadata_from_raw_image<P: AsRef<Path>>(path: P) -> Result<Metadata> {
+    let rawloader::RawImage { width, height, .. } = rawloader::decode_file(path.as_ref())?;
+    return Ok(Metadata {
+        width: width.try_into()?,
+        height: height.try_into()?,
+        date_time: None,
+        gps_location: None,
+        rotation: None,
+        type_specific: TypeSpecific::Image(Default::default()),
+    });
+}
+
+pub fn extract_exif_metadata<P: AsRef<Path>>(path: P) -> Result<Metadata> {
     let file = fs::File::open(path.as_ref())?;
-    let reader = Reader::new(&mut std::io::BufReader::new(&file));
-    // We do this to make sure that we can atleast extract height and width if there is not exif
-    // data to extract
-    if reader.is_err() {
-        let img = image::open(path.as_ref())?;
-        let dim = img.dimensions();
-        return Ok(Metadata {
-            width: dim.0,
-            height: dim.1,
-            date_time: None,
-            gps_location: None,
-            rotation: None,
-            type_specific: TypeSpecific::Image(Default::default()),
-        });
-    }
-    let reader = reader.unwrap();
+    let reader = Reader::new(&mut std::io::BufReader::new(&file))?;
+
     let date_time = field_as_string(&reader, Tag::DateTime);
     let date_time = date_time
         .and_then(|date_time| NaiveDateTime::parse_from_str(&date_time, "%Y-%m-%d %H:%M:%S").ok());
@@ -259,7 +263,7 @@ pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<
     };
 
     let rotation = find_orientation(&reader);
-    let (width, height) = width_and_height(&path, &reader)?;
+    let (width, height) = width_and_height(&reader)?;
     let gps_location = gps_image(&reader);
 
     let mut image_metadata = ImageMetadata::default();
@@ -280,7 +284,7 @@ pub fn extract_metadata_image_jpg<P: AsRef<std::path::Path>>(path: P) -> Result<
 }
 
 // This function is used when importing files from the terminal
-fn get_video_json_data_from_path<P: AsRef<std::path::Path>>(path: P) -> Result<Metadata> {
+fn extract_video_metadata_from_path<P: AsRef<Path>>(path: P) -> Result<Metadata> {
     let file_name = path.as_ref().as_os_str();
     Ok(extract_metadata_video(
         &Command::new("ffprobe")

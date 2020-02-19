@@ -32,8 +32,7 @@ use crate::metadata::Metadata;
 use crate::model::{create_schema, Entity, EntityType, Tag};
 use crate::tags::{add_parent, list_tags, remove_parent, search_tags, tag_image};
 use crate::thumbnail::{
-    copy_and_create_thumbnail, copy_and_create_thumbnail_bytes, file_type_from_path, FileType,
-    MediaType,
+    copy_and_create_thumbnail, copy_and_create_thumbnail_bytes, file_type_from_path, MediaType,
 };
 
 type DbConn = Client;
@@ -359,16 +358,13 @@ async fn main() -> Result<()> {
         Cmd::InitDb => {
             create_schema(&get_db(config).await?).await?;
         }
-        Cmd::Metadata { path } => {
-            let file_type = file_type_from_path(&path).ok_or(anyhow!("Unknown file type"))?;
-            if file_type == FileType::Png {
-                println!("Cannot show metadata for PNG images");
-            } else if file_type.media_type() == MediaType::RawImage {
-                println!("Showing metadata for raw images is not supported yet");
-            } else if file_type.media_type() == MediaType::Video || file_type == FileType::Jpeg {
-                println!("{:#?}", Metadata::from_file(&path)?);
-            }
-        }
+        Cmd::Metadata { path } => match Metadata::from_file(&path) {
+            Ok(metadata) => println!("{:#?}", metadata),
+            Err(_) => println!(
+                "Unable to get metadata for {:?}, maybe it's unsupported",
+                &path
+            ),
+        },
         Cmd::Search { tags } => {
             dbg!(search_tags(&get_db(config).await?, &tags).await?);
         }
