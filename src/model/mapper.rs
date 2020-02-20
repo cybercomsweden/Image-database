@@ -281,8 +281,8 @@ impl Tag {
                 .query_one(
                     format!(
                         "
-                            INSERT INTO tag(pid, canonical_name, name, type)
-                            VALUES($1, $2, $3, $4)
+                            INSERT INTO tag(pid, canonical_name, name)
+                            VALUES($1, $2, $3)
                             RETURNING {}
                         ",
                         Self::COLS.join(", "),
