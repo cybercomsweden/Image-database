@@ -2,6 +2,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Tags as ApiTags } from "./api.js";
 
+import classes from "./css/tag-list.css";
+
 function cmp(a, b) {
     if (a < b) {
         return -1;
@@ -47,7 +49,7 @@ export class Tags extends React.Component {
             );
         }
 
-        return <ul className="tag-list">{childNodes}</ul>;
+        return <ul className={classes.tree}>{childNodes}</ul>;
     }
 
     render() {

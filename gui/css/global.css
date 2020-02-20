@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans&display=swap');
+html {
+  overflow-y:scroll;
+}
+
+body {
+  margin:0;
+  padding:0;
+  background-color: #eee;
+  font-family: 'Open Sans', sans-serif;
+}

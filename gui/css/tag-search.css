@@ -1,0 +1,25 @@
+:local(.options) {
+    display: block;
+    list-style: none;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    top: 100%;
+    max-height:250px;
+    overflow-y:auto;/* to get scroll */
+    z-index: 1000;
+}
+
+:local(.options) li {
+    display: block;
+    background: whitesmoke;
+    font-size: 1.2rem;
+    width: 100%;
+    cursor: pointer;
+}
+
+ :local(.options) li:local(.option-active) {
+    background: #0889ef;
+ }
+

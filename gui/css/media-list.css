@@ -1,0 +1,38 @@
+:local(.list) {
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+  grid-gap: 50px;
+  justify-content: center;
+}
+
+:local(.thumbnail) {
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+}
+
+:local(.thumbnail) > img, video {
+    vertical-align: middle;
+}
+
+:local(.play-button) {
+  position: absolute;
+  display: block;
+  top: calc(50% - 37.5px);
+  left: calc(50% - 37.5px);
+  transition: all 0.5s ease;
+}
+
+:local(.play-button) polygon {
+    transition: all 0.7s ease-in-out;
+    stroke-dasharray: 240;
+    stroke-dashoffset: 480;
+    stroke: #fff;
+    transform: translateY(0)
+}
+
+:local(.play-button):hover polygon {
+    stroke-dashoffset: 0;
+    opacity: 1;
+    stroke: #f8aa28;
+}

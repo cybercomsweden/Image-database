@@ -16,9 +16,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "autoprefixer": "^9.7.4",
     "immutability-helper": "^3.0.1",
     "mapbox-gl": "^1.7.0",
     "pbf": "^3.2.1",
+    "postcss-modules": "^1.5.0",
     "query-string": "^6.10.1",
     "react": "^16.12.0",
     "react-dom": "^16.12.0",

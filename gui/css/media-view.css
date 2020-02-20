@@ -1,0 +1,152 @@
+:local(.container) {
+    position: relative;
+}
+
+:local(.container) svg {
+    fill: currentColor;
+    stroke: currentColor;
+}
+
+:local(.preview-container) {
+    background-color: #111;
+    position: relative;
+    border-radius: 5px;
+}
+
+:local(.preview) {
+  max-height: 80vh;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+img:local(.preview) {
+    max-width: 100%;
+}
+
+video:local(.preview) {
+  width: 100%;
+}
+
+:local(.nav-bar) {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: inline-flex;
+}
+
+:local(.nav-bar) > * {
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+}
+
+:local(.nav-bar) > :not(:first-child) {
+    margin-left: 8px;
+}
+
+:local(.nav-bar) > :hover {
+    color: rgba(255, 255, 255, 1);
+    transition: all 100ms ease-in-out;
+}
+
+:local(.chevron) {
+    opacity: 0.4;
+    transition: all 100ms ease-in-out;
+}
+:local(.chevron):hover {
+    opacity: 1;
+}
+
+:local(.chevron):active polyline {
+  stroke-width: 6;
+}
+
+:local(.button) {
+    outline: 0;
+    cursor: pointer;
+}
+
+:local(.prev) {
+    position: absolute;
+    left: 16px;
+    top: calc(50% - 40px);
+}
+
+:local(.next) {
+    position: absolute;
+    right: 16px;
+    top: calc(50% - 40px);
+}
+
+:local(.tag-container) {
+    padding: 8px 0px;
+}
+
+:local(.tag-container) > :not(:first-child) {
+    margin-left: 16px;
+}
+
+:local(.tag) {
+    display:inline-block;
+    background: #d1cfce;
+    color: #000;
+    padding: 8px 16px;
+    text-decoration:none;
+    border-radius: 5px;
+}
+
+:local(.tag-search) {
+    width: 200px;
+    display: inline-block;
+}
+
+:local(.property-table) {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto auto;
+}
+
+:local(.property-table) > * {
+    margin: 0;
+    padding: 8px 16px;
+    border-top: 1px solid #eee;
+}
+
+:local(.property-table) > :last-child {
+    border-bottom: 1px solid #eee;
+}
+
+:local(.property-table) > :nth-child(odd) {
+    font-weight: bold;
+}
+
+:local(.metadata) {
+    min-height: 500px;
+    display: flex;
+    background: white;
+    border-radius: 5px;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+:local(.map) {
+    align-self: stretch;
+    flex-grow: 1;
+}
+
+:local(.map):local(.no-map) {
+    background: #aaa;
+    color: black;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+:local(.map):local(.no-map) > svg {
+    opacity: 0.3;
+}
+
+:local(.map):local(.no-map) > span {
+    opacity: 0.7;
+}

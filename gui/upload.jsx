@@ -1,5 +1,7 @@
 import React from "react";
 
+import classes from "./css/upload.css";
+
 export class Upload extends React.Component {
     /*
     static previewFile(file) {
@@ -104,23 +106,21 @@ export class Upload extends React.Component {
             color: highlight ? "blue" : "inherit",
         };
         return (
-            <div id="drop-area">
-                <div
-                    className="upload"
-                    style={style}
-                    ref={(ref) => { this.dropArea = ref; }}
-                    onDragEnter={this.highlight}
-                    onDragOver={this.highlight}
-                    onDragLeave={this.unhighlight}
-                    onDrop={this.handleDrop}
-                >
-                    <p className="p-upload">
-                        Upload one or multiple files by dragging and
-                        dropping images within the dashed box
-                    </p>
-                    <progress ref={(ref) => { this.progressBar = ref; }} max="100" value="0" className="progress-bar" />
-                    <div id="gallery" />
-                </div>
+            <div
+                className={classes.dropArea}
+                id="drop-area"
+                style={style}
+                ref={(ref) => { this.dropArea = ref; }}
+                onDragEnter={this.highlight}
+                onDragOver={this.highlight}
+                onDragLeave={this.unhighlight}
+                onDrop={this.handleDrop}
+            >
+                <p>
+                    Upload one or multiple files by dragging and
+                    dropping images within the dashed box
+                </p>
+                <progress ref={(ref) => { this.progressBar = ref; }} max="100" value="0" />
             </div>
         );
     }

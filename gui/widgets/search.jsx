@@ -5,6 +5,8 @@ import {
 import queryString from "query-string";
 import { AutocompleteTags } from "../api.js";
 
+import classes from "../css/tag-search.css";
+
 class InnerSearch extends React.Component {
     constructor(props) {
         super(props);
@@ -144,11 +146,11 @@ class InnerSearch extends React.Component {
         const filteredOptions = this.filterOptions(userInput.split(" "));
         if (showOptions && filteredOptions.length) {
             optionList = (
-                <ul className="options" onMouseDown={this.onMouseDown}>
+                <ul className={classes.options} onMouseDown={this.onMouseDown}>
                     {filteredOptions.map(({ tag, path }, index) => {
                         let className;
                         if (index === activeOption) {
-                            className = "option-active";
+                            className = classes.optionActive;
                         }
                         return (
                             <li
@@ -300,11 +302,11 @@ export class SimpleSearch extends React.Component {
         const filteredOptions = this.filterOptions(userInput);
         if (showOptions && filteredOptions.length) {
             optionList = (
-                <ul className="options" onMouseDown={this.onMouseDown}>
+                <ul className={classes.options} onMouseDown={this.onMouseDown}>
                     {filteredOptions.map(({ tag, path }, index) => {
                         let className;
                         if (index === activeOption) {
-                            className = "option-active";
+                            className = classes.optionActive;
                         }
                         return (
                             <li

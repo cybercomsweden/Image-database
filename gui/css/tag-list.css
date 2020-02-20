@@ -1,0 +1,40 @@
+:local(.tree) {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+    font-size: 1.5rem;
+    color: rgba(0, 0, 0, 0.3);
+}
+
+:local(.tree) a {
+    color: #0889ef;
+    text-decoration: none;
+    transition: all 0.2s ease-out;
+}
+
+:local(.tree) a:hover {
+    padding-left: 16px;
+}
+
+:local(.tree) li {
+    margin-top: 32px;
+}
+
+:local(.tree) :local(.tree) li {
+    margin-top: 8px;
+}
+
+:local(.tree) :local(.tree) {
+    padding-left: 32px;
+    font-size: 0.8em;
+    list-style-type: disclosure-closed;
+}
+
+:local(.tree) :local(.tree) :local(.tree) {
+    list-style-type: none;
+}
+
+:local(.tree) :local(.tree) :local(.tree) :local(.tree) {
+    font-size: 1em;
+}
+

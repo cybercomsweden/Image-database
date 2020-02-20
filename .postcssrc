@@ -1,0 +1,12 @@
+{
+    "modules": true,
+    "plugins": {
+        "autoprefixer": {
+            "grid": true
+        },
+        "postcss-modules": {
+            "scopeBehaviour": "global",
+            "camelCase": true
+        }
+    }
+}

@@ -3,6 +3,8 @@ import { NavigationControl, LngLatBounds } from "mapbox-gl";
 import { BaseMap } from "./widgets/map.jsx";
 import { Entities } from "./api.js";
 
+import classes from "./css/world-map.css";
+
 export class WorldMap extends BaseMap {
     constructor(props) {
         super(props);
@@ -118,8 +120,8 @@ export class WorldMap extends BaseMap {
     render() {
         return (
             <div>
-                <BaseMap mapRef={this.registerMapRef} className="mapContainer" />
-                <div id="zoom" className="zoom">
+                <BaseMap mapRef={this.registerMapRef} className={classes.container} />
+                <div id="zoom" className={classes.zoom}>
                     <b><i>Zoom out</i></b>
                 </div>
             </div>

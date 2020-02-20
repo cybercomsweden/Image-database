@@ -8,6 +8,9 @@ import { Entity, Entities } from "./api.js";
 import { Map } from "./widgets/map.jsx";
 import { SimpleSearch } from "./widgets/search.jsx";
 
+import listClasses from "./css/media-list.css";
+import viewClasses from "./css/media-view.css";
+
 function getFormattedDate(timestamp) {
     const date = new Date(timestamp * 1000);
     const year = date.getFullYear();
@@ -59,7 +62,7 @@ function Chevron(props) {
     }
 
     return (
-        <svg className="chevron" width="50px" height="75px" viewBox="0 0 50 75" {...other}>
+        <svg className={viewClasses.chevron} width="50px" height="75px" viewBox="0 0 50 75" {...other}>
             <polyline
                 fill="none"
                 stroke="#FFFFFF"
@@ -85,9 +88,8 @@ class PlayButton extends React.Component {
 
     render() {
         return (
-            <svg onClick={this.handleClick} className="video-overlay-play-button" width="75px" height="75" viewBox="0 0 213.7 213.7" enableBackground="new 0 0 213.7 213.7">
-                <polygon className="triangle" id="XMLID_18_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" points="73.5,62.5 148.5,105.8 73.5,149.1 " />
-                <circle className="circle" id="XMLID_17_" fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" cx="106.8" cy="106.8" r="103.3" />
+            <svg onClick={this.handleClick} className={listClasses.playButton} width="75px" height="75" viewBox="0 0 213.7 213.7" enableBackground="new 0 0 213.7 213.7">
+                <polygon fill="none" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeMiterlimit="10" points="73.5,62.5 148.5,105.8 73.5,149.1 " />
             </svg>
         );
     }
@@ -223,7 +225,7 @@ function Metadata(props) {
         // This happens when the object is neither image nor video
     }
 
-    return <dl className="property-table" {...attrs}>{items}</dl>;
+    return <dl className={viewClasses.propertyTable} {...attrs}>{items}</dl>;
     /* eslint-enable camelcase */
 }
 
@@ -243,7 +245,7 @@ function VideoPlayer(props) {
     return (
         // eslint-disable-next-line jsx-a11y/media-has-caption
         <video
-            className="preview"
+            className={viewClasses.preview}
             src={`/assets/${entity.path}`}
             controls
             autoPlay
@@ -336,10 +338,10 @@ class Pic extends React.Component {
                 for (const tag of tagList.tag) {
                     if (edit) {
                         tags.push(
-                            <span className="tag" key={tag.canonical_name}>
+                            <span className={viewClasses.tag} key={tag.canonical_name}>
                                 {tag.name}
                                 {" "}
-                                <svg className="inherit-color clickable" width="12px" height="12px" onClick={this.handleTagRemove} data-canonical-name={tag.canonical_name}>
+                                <svg className={viewClasses.button} width="12px" height="12px" onClick={this.handleTagRemove} data-canonical-name={tag.canonical_name}>
                                     <line x1="1" y1="1" x2="11" y2="11" strokeWidth="2" />
                                     <line x1="11" y1="1" x2="1" y2="11" strokeWidth="2" />
                                 </svg>
@@ -348,7 +350,7 @@ class Pic extends React.Component {
                     } else {
                         const dest = "/media?q=".concat(tag.canonical_name);
                         tags.push(
-                            <Link className="tag" key={tag.canonical_name} to={dest}>
+                            <Link className={viewClasses.tag} key={tag.canonical_name} to={dest}>
                                 {tag.name}
                             </Link>,
                         );
@@ -357,7 +359,7 @@ class Pic extends React.Component {
             }
             if (edit) {
                 tags.push(
-                    <div className="preview-edit" key="!search-input">
+                    <div className={viewClasses.tagSearch} key="!search-input">
                         <SimpleSearch placeholder="Add tag" onSelect={this.handleTagAdd} />
                     </div>,
                 );
@@ -365,10 +367,10 @@ class Pic extends React.Component {
 
             let map;
             if (location && (location.latitude || location.longitude)) {
-                map = <Map className="preview-map" lng={location.longitude} lat={location.latitude} zoom="10" />;
+                map = <Map className={viewClasses.map} lng={location.longitude} lat={location.latitude} zoom="10" />;
             } else {
                 map = (
-                    <div className="preview-map no-map">
+                    <div className={`${viewClasses.map} ${viewClasses.noMap}`}>
                         <MapLogo width="150" height="150" />
                         <span>No GPS data available</span>
                     </div>
@@ -376,7 +378,7 @@ class Pic extends React.Component {
             }
 
             additionalInfo = (
-                <div className="preview-metadata">
+                <div className={viewClasses.metadata}>
                     <Metadata
                         data={metadata}
                         filename={simpleEntity.path.replace("dest/", "")}
@@ -398,19 +400,19 @@ class Pic extends React.Component {
         let previewImg = null;
         let videoPlayer = null;
         if (!playClicked) {
-            previewImg = <img className="preview" src={`/assets/${simpleEntity.preview_path}`} alt="" />;
+            previewImg = <img className={viewClasses.preview} src={`/assets/${simpleEntity.preview_path}`} alt="" />;
         }
         if (playClicked) {
             videoPlayer = <VideoPlayer entity={simpleEntity} />;
         }
 
         return (
-            <div className="preview-container">
-                <div className="preview-media">
-                    <div className="nav-bar">
-                        <EditIcon className="inherit-color" width="20" height="20" onClick={this.handleEditClick} />
-                        <PreserveQueryParamsLink className="button close" to="/">
-                            <svg className="inherit-color" width="20px" height="20px">
+            <div className={viewClasses.container}>
+                <div className={viewClasses.previewContainer}>
+                    <div className={viewClasses.navBar}>
+                        <EditIcon width="20" height="20" onClick={this.handleEditClick} />
+                        <PreserveQueryParamsLink className={viewClasses.button} to="/">
+                            <svg width="20px" height="20px">
                                 <line x1="2" y1="2" x2="20" y2="20" strokeWidth="2" />
                                 <line x1="20" y1="2" x2="2" y2="20" strokeWidth="2" />
                             </svg>
@@ -418,7 +420,7 @@ class Pic extends React.Component {
                     </div>
                     {
                         prevEntity != null && (
-                            <PreserveQueryParamsLink className="button prev" to={`/media/${prevEntity.id}`}>
+                            <PreserveQueryParamsLink className={`${viewClasses.button} ${viewClasses.prev}`} to={`/media/${prevEntity.id}`}>
                                 <Chevron dir="left" />
                             </PreserveQueryParamsLink>
                         )
@@ -428,13 +430,15 @@ class Pic extends React.Component {
                     {overlay}
                     {
                         nextEntity != null && (
-                            <PreserveQueryParamsLink className="button next" to={`/media/${nextEntity.id}`}>
+                            <PreserveQueryParamsLink className={`${viewClasses.button} ${viewClasses.next}`} to={`/media/${nextEntity.id}`}>
                                 <Chevron dir="right" />
                             </PreserveQueryParamsLink>
                         )
                     }
                 </div>
-                <div className="preview-tags" ref={(ref) => { this.tags = ref; }}>{tags}</div>
+                <div className={viewClasses.tagContainer} ref={(ref) => { this.tags = ref; }}>
+                    {tags}
+                </div>
                 {additionalInfo}
             </div>
         );
@@ -450,7 +454,7 @@ function MediaList({ entities }) {
                 overlay = <PlayButton />;
             }
             entityLinks.push(
-                <PreserveQueryParamsLink className="media-thumbnail" key={entity.id} to={`/media/${entity.id}`}>
+                <PreserveQueryParamsLink className={listClasses.thumbnail} key={entity.id} to={`/media/${entity.id}`}>
                     <img src={`/assets/${entity.thumbnail_path}`} alt="" />
                     {overlay}
                 </PreserveQueryParamsLink>,
@@ -458,7 +462,7 @@ function MediaList({ entities }) {
         }
     }
     return (
-        <div className="media-thumbnail-list">
+        <div className={listClasses.list}>
             {entityLinks}
         </div>
     );

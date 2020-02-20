@@ -9,7 +9,8 @@ import { Tags } from "./tags.jsx";
 import { WorldMap } from "./world_map.jsx";
 import { Upload } from "./upload.jsx";
 
-import "./stylesheet.css";
+import "./css/global.css";
+import layout from "./css/layout.css";
 
 function App() {
     const mediaIsActive = (_, { pathname }) => pathname.match(/^\/(media|$)/);
@@ -17,7 +18,7 @@ function App() {
         <BrowserRouter>
             <div className="content">
                 <header>
-                    <nav>
+                    <nav className={layout.mainMenu}>
                         <NavLink to="/" isActive={mediaIsActive}>Media</NavLink>
                         <NavLink to="/tags">Tags</NavLink>
                         <NavLink to="/map">Map</NavLink>
