@@ -48,6 +48,14 @@ fn get_media_type<P: AsRef<Path>>(path: P) -> Result<EntityType> {
     }
 }
 
+fn make_protobuf_response<T: prost::Message>(pb: &T) -> Result<impl Responder> {
+    let mut buf_mut = Vec::new();
+    pb.encode(&mut buf_mut)?;
+    Ok(HttpResponse::Ok()
+        .content_type("application/protobuf")
+        .body(buf_mut))
+}
+
 /// Helper method to access database the database in a request handler. Use by
 /// adding `db: web::Data<DbConn>` to your request handler's argument list.
 async fn get_db(config: Config) -> Result<DbConn> {
@@ -163,13 +171,7 @@ async fn media_edit(db: web::Data<DbConn>, mut payload: web::Payload) -> Result<
         TagToEntity::delete(&db, tag.id, db_entity.id).await?;
     }
 
-    let rsp_pb = ApiEntity::new_from_db(db_entity, new_tags)?;
-
-    let mut buf_mut = Vec::new();
-    rsp_pb.encode(&mut buf_mut)?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/protobuf")
-        .body(buf_mut))
+    make_protobuf_response(&ApiEntity::new_from_db(db_entity, new_tags)?)
 }
 
 async fn save_file(db: web::Data<DbConn>, mut payload: Multipart) -> Result<impl Responder> {
@@ -259,12 +261,7 @@ async fn list_from_database(
     while let Some(entity) = entities.next().await.transpose()? {
         entities_pb.add(api::Entity::try_from(entity)?);
     }
-    let mut buf_mut = Vec::new();
-    entities_pb.encode(&mut buf_mut)?;
-
-    Ok(HttpResponse::Ok()
-        .content_type("application/protobuf")
-        .body(buf_mut))
+    make_protobuf_response(&entities_pb)
 }
 
 async fn get_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<impl Responder> {
@@ -279,13 +276,8 @@ async fn get_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<im
         tags_pb.add(api::Tag::try_from(tag)?);
     }
 
-    let mut buf_mut = Vec::new();
     let pb_entity = api::create_entity_with_metadata(entity, tags_pb)?;
-    pb_entity.encode(&mut buf_mut)?;
-
-    Ok(HttpResponse::Ok()
-        .content_type("application/protobuf")
-        .body(buf_mut))
+    make_protobuf_response(&pb_entity)
 }
 
 async fn tags_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
@@ -294,12 +286,7 @@ async fn tags_from_database(db: web::Data<DbConn>) -> Result<impl Responder> {
     while let Some(tag) = tags.next().await.transpose()? {
         tags_pb.add(api::Tag::try_from(tag)?);
     }
-    let mut buf_mut = Vec::new();
-    tags_pb.encode(&mut buf_mut)?;
-
-    Ok(HttpResponse::Ok()
-        .content_type("application/protobuf")
-        .body(buf_mut))
+    make_protobuf_response(&tags_pb)
 }
 
 async fn get_tag_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Result<impl Responder> {
@@ -307,23 +294,12 @@ async fn get_tag_from_database(req: HttpRequest, db: web::Data<DbConn>) -> Resul
     let tag = Box::pin(Tag::get_from_canonical_name(&db, name.clone()))
         .await
         .ok_or(anyhow!("Tag {} not mapped yet", name))?;
-    let mut buf_mut = Vec::new();
     let tag_pb = api::Tag::try_from(tag)?;
-    tag_pb.encode(&mut buf_mut)?;
-
-    Ok(HttpResponse::Ok()
-        .content_type("application/protobuf")
-        .body(buf_mut))
+    make_protobuf_response(&tag_pb)
 }
 
 async fn autocomplete_tags(db: web::Data<DbConn>) -> Result<impl Responder> {
-    let tags_pb = api::AutocompleteTags::from_db(&db).await?;
-    let mut buf_mut = Vec::new();
-    tags_pb.encode(&mut buf_mut)?;
-
-    Ok(HttpResponse::Ok()
-        .content_type("application/protobuf")
-        .body(buf_mut))
+    make_protobuf_response(&api::AutocompleteTags::from_db(&db).await?)
 }
 
 async fn run_server(config: Config) -> Result<()> {
