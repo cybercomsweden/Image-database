@@ -50,7 +50,7 @@ case "$ID" in
 esac
 
 
-if [[ $(sudo -u postgres psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='postgres'" 2>/dev/null) -ne 1 ]]; then
+if [[ $(sudo -u postgres psql postgres -tAc "SELECT 1 FROM pg_roles WHERE rolname='$REALUSER'" 2>/dev/null) -ne 1 ]]; then
     echo "Creating PostgreSQL user for $REALUSER"
     sudo -u postgres createuser -drs $REALUSER
 fi
@@ -58,7 +58,7 @@ fi
 if [[ $(sudo -u postgres psql postgres -tAc "SELECT 1 FROM pg_database WHERE datname='backlog'" 2>/dev/null) -ne 1 ]]; then
     echo "Creating database 'backlog'"
     sudo -u $REALUSER createdb backlog
-    cargo run init-db
+    sudo -u $REALUSER /home/$REALUSER/.cargo/bin/cargo run init-db
 fi
 
 if [ ! -L .git/hooks/pre-commit ]; then
@@ -68,7 +68,7 @@ fi
 
 if [ ! -d node_modules/ ]; then
     echo "Installing JavaScript dependencies"
-    npm install
+    sudo -u $REALUSER npm install
 fi
 
 echo "Done"
