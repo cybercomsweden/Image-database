@@ -11,6 +11,23 @@ async function fetchPb(cls, resource, init) {
     return cls.read(new Pbf(buf));
 }
 
+async function putPb(cls, resource, obj) {
+    const pbf = new Pbf();
+    cls.write(obj, pbf);
+
+    const rsp = await fetch(resource, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/protobuf",
+        },
+        body: pbf.finish(),
+    });
+
+    const blob = await rsp.blob();
+    const buf = await blob.arrayBuffer();
+    return cls.read(new Pbf(buf));
+}
+
 
 AutocompleteTags.fetch = async function fetchAutocompleteTags() {
     return fetchPb(AutocompleteTags, "/api/tags/autocomplete");
@@ -26,6 +43,10 @@ Entities.fetch = async function fetchEntities(query) {
 
 Entity.fetch = async function fetchEntity(id) {
     return fetchPb(Entity, `/api/media/${id}`);
+};
+
+Entity.save = async function saveEntity(entity) {
+    return putPb(Entity, `/api/media/${entity.id}`, entity);
 };
 
 Tags.fetch = async function fetchTags() {

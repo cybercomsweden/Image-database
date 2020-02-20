@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use chrono::{DateTime, Utc};
 use deunicode::deunicode;
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, TryStreamExt};
 use regex::Regex;
 use std::borrow::Borrow;
 use std::convert::{TryFrom, TryInto};
@@ -304,6 +304,22 @@ impl Tag {
             .map(|row| Ok(Self::from_row(&row?)?)))
     }
 
+    pub async fn list_from_ids(client: &Client, ids: &[i32]) -> Result<Vec<Self>> {
+        Ok(client
+            .query_raw(
+                format!(
+                    "SELECT {} FROM tag WHERE id IN (select(unnest($1::int[])))",
+                    Self::COLS.join(", ")
+                )
+                .as_str(),
+                vec![ids].iter().map(|x| x as &dyn ToSql),
+            )
+            .await?
+            .map(|row| -> Result<Self> { Ok(Self::from_row(&row?)?) })
+            .try_collect()
+            .await?)
+    }
+
     pub async fn get_from_canonical_name<T: Borrow<str>>(
         client: &Client,
         canonical_name: T,
@@ -432,7 +448,11 @@ impl TagToEntity {
         })
     }
 
-    pub async fn insert(client: &Client, tid: &i32, eid: &i32) -> Result<Self> {
+    pub async fn insert<T: Borrow<i32>, E: Borrow<i32>>(
+        client: &Client,
+        tid: T,
+        eid: E,
+    ) -> Result<Self> {
         Ok(Self::from_row(
             &client
                 .query_one(
@@ -445,9 +465,29 @@ impl TagToEntity {
                         Self::COLS.join(", "),
                     )
                     .as_str(),
-                    &[&tid, &eid],
+                    &[tid.borrow(), eid.borrow()],
                 )
                 .await?,
         )?)
+    }
+
+    pub async fn delete<T: Borrow<i32>, E: Borrow<i32>>(
+        client: &Client,
+        tid: T,
+        eid: E,
+    ) -> Result<()> {
+        let num_rows = &client
+            .execute(
+                "
+                    DELETE FROM tag_to_entity
+                    WHERE tid = $1 AND eid = $2
+                ",
+                &[tid.borrow(), eid.borrow()],
+            )
+            .await?;
+        if num_rows != &1 {
+            return Err(anyhow!("No such tag for the given entity").into());
+        }
+        Ok(())
     }
 }

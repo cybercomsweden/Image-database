@@ -13,6 +13,20 @@ use crate::model::EntityType as DbEntityType;
 use crate::model::Tag as DbTag;
 include!(concat!(env!("OUT_DIR"), "/api.rs"));
 
+impl Entity {
+    pub fn new_from_db<T: IntoIterator<Item = DbTag>>(
+        db_entity: DbEntity,
+        db_tags: T,
+    ) -> Result<Self> {
+        let mut tags = Tags::default();
+        for db_tag in db_tags {
+            tags.add(db_tag.try_into()?);
+        }
+
+        create_entity_with_metadata(db_entity, tags)
+    }
+}
+
 impl TryFrom<DbEntity> for Entity {
     type Error = Error;
     fn try_from(db_entity: DbEntity) -> Result<Entity> {
@@ -153,8 +167,13 @@ impl Tags {
 impl AutocompleteTags {
     pub fn from_row(row: &Row) -> Result<AutocompleteTag> {
         Ok(AutocompleteTag {
-            canonical_name: row.try_get::<_, String>(0)?,
-            path: row.try_get::<_, Vec<String>>(1)?,
+            tag: Some(Tag {
+                id: row.try_get::<_, i32>(0)?,
+                pid: row.try_get::<_, Option<i32>>(1)?.unwrap_or(0),
+                canonical_name: row.try_get::<_, String>(2)?,
+                name: row.try_get::<_, String>(3)?,
+            }),
+            path: row.try_get::<_, Vec<String>>(4)?,
         })
     }
 
@@ -163,11 +182,11 @@ impl AutocompleteTags {
             .query_raw(
                 "
                     WITH RECURSIVE deeptag AS (
-                        SELECT id, canonical_name, array[name] AS path FROM tag WHERE pid IS NULL
+                        SELECT id, pid, canonical_name, name, array[name] AS path FROM tag WHERE pid IS NULL
                         UNION
-                        SELECT t.id, t.canonical_name, array_append(dt.path, t.name) FROM tag t JOIN deeptag dt ON dt.id = t.pid
+                        SELECT t.id, t.pid, t.canonical_name, t.name, array_append(dt.path, t.name) FROM tag t JOIN deeptag dt ON dt.id = t.pid
                     )
-                    SELECT canonical_name, path FROM deeptag
+                    SELECT id, pid, canonical_name, name, path FROM deeptag
                 ",
                 vec![],
             )

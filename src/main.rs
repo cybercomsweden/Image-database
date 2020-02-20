@@ -2,9 +2,11 @@ use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{middleware::Logger, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
-use futures::{FutureExt, Stream, StreamExt};
+use bytes::BytesMut;
+use futures::{FutureExt, Stream, StreamExt, TryStreamExt};
 use prost::Message;
 use serde::Deserialize;
+use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::path::{Path, PathBuf};
@@ -24,12 +26,13 @@ mod model;
 mod tags;
 mod thumbnail;
 
+use crate::api::{Entity as ApiEntity, Tags as ApiTags};
 use crate::cli::{Args, Cmd, SubCmdTag};
 use crate::config::Config;
 use crate::error::Result;
 use crate::hash::Sha3;
 use crate::metadata::Metadata;
-use crate::model::{create_schema, Entity, EntityType, Tag};
+use crate::model::{create_schema, Entity, EntityType, Tag, TagToEntity};
 use crate::tags::{add_parent, list_tags, remove_parent, search_tags, tag_image};
 use crate::thumbnail::{
     copy_and_create_thumbnail, copy_and_create_thumbnail_bytes, file_type_from_path, MediaType,
@@ -89,6 +92,86 @@ async fn static_file(req: HttpRequest) -> Result<NamedFile> {
     }
 }
 
+fn get_differences<'a, T, F: Fn(&T) -> U, U: Ord>(
+    curr: &'a [T],
+    new: &'a [T],
+    key: F,
+) -> (Vec<&'a T>, Vec<&'a T>) {
+    let curr_set: BTreeSet<U> = curr.iter().map(&key).collect();
+    let new_set: BTreeSet<U> = new.iter().map(&key).collect();
+
+    let mut to_add = Vec::new();
+    for to_add_key in new_set.difference(&curr_set) {
+        for v in new {
+            if to_add_key == &key(v) {
+                to_add.push(v);
+            }
+        }
+    }
+
+    let mut to_remove = Vec::new();
+    for to_remove_key in curr_set.difference(&new_set) {
+        for v in new {
+            if to_remove_key == &key(v) {
+                to_remove.push(v);
+            }
+        }
+    }
+
+    (to_add, to_remove)
+}
+
+async fn media_edit(db: web::Data<DbConn>, mut payload: web::Payload) -> Result<impl Responder> {
+    // TODO: Use transaction
+    let mut body = BytesMut::new();
+    while let Some(chunk) = payload
+        .next()
+        .await
+        .transpose()
+        .map_err(|e| anyhow!("{}", e))?
+    {
+        // TODO: Protect from very large payloads
+        body.extend_from_slice(&chunk);
+    }
+
+    let entity_pb = ApiEntity::decode(body)?;
+    let client_ids: Vec<i32> = entity_pb
+        .tags
+        .unwrap_or(ApiTags::default())
+        .tag
+        .iter()
+        .map(|t| t.id)
+        .collect();
+
+    let db_entity = Entity::get(&db, entity_pb.id)
+        .await
+        .ok_or(anyhow!("No such entity"))?;
+
+    let curr_tags: Vec<Tag> = Tag::get_from_eid(&db, entity_pb.id)
+        .await?
+        .try_collect()
+        .await?;
+    let new_tags = Tag::list_from_ids(&db, &client_ids).await?;
+
+    let (tags_to_add, tags_to_remove) = get_differences(&curr_tags, &new_tags, |tag| tag.id);
+
+    for tag in tags_to_add {
+        TagToEntity::insert(&db, tag.id, db_entity.id).await?;
+    }
+
+    for tag in tags_to_remove {
+        TagToEntity::delete(&db, tag.id, db_entity.id).await?;
+    }
+
+    let rsp_pb = ApiEntity::new_from_db(db_entity, new_tags)?;
+
+    let mut buf_mut = Vec::new();
+    rsp_pb.encode(&mut buf_mut)?;
+    Ok(HttpResponse::Ok()
+        .content_type("application/protobuf")
+        .body(buf_mut))
+}
+
 async fn save_file(db: web::Data<DbConn>, mut payload: Multipart) -> Result<impl Responder> {
     // iterate over multipart stream
     while let Some(item) = payload.next().await {
@@ -139,7 +222,7 @@ async fn save_file(db: web::Data<DbConn>, mut payload: Multipart) -> Result<impl
 
         let media_type = get_media_type(&path)?;
 
-        let entity = Entity::insert(
+        Entity::insert(
             &db,
             media_type,
             &img,
@@ -151,7 +234,6 @@ async fn save_file(db: web::Data<DbConn>, mut payload: Multipart) -> Result<impl
             &location,
         )
         .await?;
-        dbg!(entity);
     }
     Ok(HttpResponse::Ok())
 }
@@ -265,6 +347,7 @@ async fn run_server(config: Config) -> Result<()> {
             .route("/static/{file}", web::get().to(static_file))
             .route("/api/media", web::get().to(list_from_database))
             .route("/api/media/{id}", web::get().to(get_from_database))
+            .route("/api/media/{id}", web::put().to(media_edit))
             .route("/api/tags", web::get().to(tags_from_database))
             .route("/api/tags/autocomplete", web::get().to(autocomplete_tags))
             .route("/api/tags/{name}", web::get().to(get_tag_from_database))

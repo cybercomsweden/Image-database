@@ -1,3 +1,4 @@
+import update from "immutability-helper";
 import React from "react";
 import {
     Link, Route, Switch, withRouter,
@@ -5,6 +6,7 @@ import {
 import queryString from "query-string";
 import { Entity, Entities } from "./api.js";
 import { Map } from "./widgets/map.jsx";
+import { SimpleSearch } from "./widgets/search.jsx";
 
 function getFormattedDate(timestamp) {
     const date = new Date(timestamp * 1000);
@@ -255,9 +257,12 @@ class Pic extends React.Component {
         this.state = {
             entity: null,
             playClicked: false,
+            edit: false,
         };
 
         this.handlePlayClick = this.handlePlayClick.bind(this);
+        this.handleEditClick = this.handleEditClick.bind(this);
+        this.handleTagAdd = this.handleTagAdd.bind(this);
     }
 
 
@@ -283,9 +288,22 @@ class Pic extends React.Component {
         this.setState({ playClicked: true });
     }
 
+    handleEditClick() {
+        const { edit } = this.state;
+        this.setState({ edit: !edit });
+    }
+
+    async handleTagAdd(tag) {
+        const { entity } = this.state;
+        const newEntity = update(entity, {
+            tags: { tag: { $push: [tag] } },
+        });
+        this.setState({ entity: await Entity.save(newEntity) });
+    }
+
     render() {
         const { entity: simpleEntity, prevEntity, nextEntity } = this.props;
-        const { entity: fullEntity } = this.state;
+        const { entity: fullEntity, edit } = this.state;
 
         let additionalInfo = null;
         const tags = [];
@@ -332,6 +350,15 @@ class Pic extends React.Component {
             );
         }
 
+        let editBox = null;
+        if (edit) {
+            editBox = (
+                <div className="preview-edit">
+                    <SimpleSearch placeholder="Add tag" onSelect={this.handleTagAdd} />
+                </div>
+            );
+        }
+
         let overlay = null;
         const { playClicked } = this.state;
         if (simpleEntity.media_type === Entity.EntityType.VIDEO.value && !playClicked) {
@@ -349,9 +376,10 @@ class Pic extends React.Component {
 
         return (
             <div className="preview-container">
+                {editBox}
                 <div className="preview-media">
                     <div className="nav-bar">
-                        <EditIcon className="inherit-color" width="20" height="20" />
+                        <EditIcon className="inherit-color" width="20" height="20" onClick={this.handleEditClick} />
                         <PreserveQueryParamsLink className="button close" to="/">
                             <svg className="inherit-color" width="20px" height="20px">
                                 <line x1="2" y1="2" x2="20" y2="20" strokeWidth="2" />
