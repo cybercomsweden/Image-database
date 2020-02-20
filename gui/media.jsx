@@ -260,9 +260,12 @@ class Pic extends React.Component {
             edit: false,
         };
 
+        this.tags = React.createRef();
+
         this.handlePlayClick = this.handlePlayClick.bind(this);
         this.handleEditClick = this.handleEditClick.bind(this);
         this.handleTagAdd = this.handleTagAdd.bind(this);
+        this.handleTagRemove = this.handleTagRemove.bind(this);
     }
 
 
@@ -291,12 +294,29 @@ class Pic extends React.Component {
     handleEditClick() {
         const { edit } = this.state;
         this.setState({ edit: !edit });
+        if (!edit) {
+            window.scrollTo({
+                top: this.tags.offsetTop,
+                behavior: "smooth",
+            });
+        }
     }
 
     async handleTagAdd(tag) {
         const { entity } = this.state;
         const newEntity = update(entity, {
             tags: { tag: { $push: [tag] } },
+        });
+        this.setState({ entity: await Entity.save(newEntity) });
+    }
+
+    async handleTagRemove(event) {
+        const { entity } = this.state;
+        const newTags = entity.tags.tag.filter(
+            (tag) => tag.canonical_name !== event.currentTarget.dataset.canonicalName,
+        );
+        const newEntity = update(entity, {
+            tags: { tag: { $set: newTags } },
         });
         this.setState({ entity: await Entity.save(newEntity) });
     }
@@ -314,16 +334,35 @@ class Pic extends React.Component {
 
             if (tagList.tag.length) {
                 for (const tag of tagList.tag) {
-                    const dest = "/media?q=".concat(tag.canonical_name);
-                    tags.push(
-                        <Link className="tag" key={tag.canonical_name} to={dest}>
-                            <div>
+                    if (edit) {
+                        tags.push(
+                            <span className="tag" key={tag.canonical_name}>
                                 {tag.name}
-                            </div>
-                        </Link>,
-                    );
+                                {" "}
+                                <svg className="inherit-color clickable" width="12px" height="12px" onClick={this.handleTagRemove} data-canonical-name={tag.canonical_name}>
+                                    <line x1="1" y1="1" x2="11" y2="11" strokeWidth="2" />
+                                    <line x1="11" y1="1" x2="1" y2="11" strokeWidth="2" />
+                                </svg>
+                            </span>,
+                        );
+                    } else {
+                        const dest = "/media?q=".concat(tag.canonical_name);
+                        tags.push(
+                            <Link className="tag" key={tag.canonical_name} to={dest}>
+                                {tag.name}
+                            </Link>,
+                        );
+                    }
                 }
             }
+            if (edit) {
+                tags.push(
+                    <div className="preview-edit" key="!search-input">
+                        <SimpleSearch placeholder="Add tag" onSelect={this.handleTagAdd} />
+                    </div>,
+                );
+            }
+
             let map;
             if (location && (location.latitude || location.longitude)) {
                 map = <Map className="preview-map" lng={location.longitude} lat={location.latitude} zoom="10" />;
@@ -350,15 +389,6 @@ class Pic extends React.Component {
             );
         }
 
-        let editBox = null;
-        if (edit) {
-            editBox = (
-                <div className="preview-edit">
-                    <SimpleSearch placeholder="Add tag" onSelect={this.handleTagAdd} />
-                </div>
-            );
-        }
-
         let overlay = null;
         const { playClicked } = this.state;
         if (simpleEntity.media_type === Entity.EntityType.VIDEO.value && !playClicked) {
@@ -376,7 +406,6 @@ class Pic extends React.Component {
 
         return (
             <div className="preview-container">
-                {editBox}
                 <div className="preview-media">
                     <div className="nav-bar">
                         <EditIcon className="inherit-color" width="20" height="20" onClick={this.handleEditClick} />
@@ -405,7 +434,7 @@ class Pic extends React.Component {
                         )
                     }
                 </div>
-                <div className="preview-tags">{tags}</div>
+                <div className="preview-tags" ref={(ref) => { this.tags = ref; }}>{tags}</div>
                 {additionalInfo}
             </div>
         );

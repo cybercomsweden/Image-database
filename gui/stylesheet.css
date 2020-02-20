@@ -43,6 +43,10 @@ body {
     opacity: 1;
 }
 
+.clickable {
+    cursor: pointer;
+}
+
 .chevron:active polyline {
   stroke-width: 6;
 }
@@ -69,10 +73,8 @@ body {
 }
 
 .preview-edit {
-    margin-bottom: 16px;
-    padding: 8px 16px;
-    background: white;
-    border-radius: 5px;
+    width: 200px;
+    display: inline-block;
 }
 
 .media-thumbnail-list {
@@ -320,7 +322,7 @@ ul.options li {
     border-radius: 5px;
 }
 
-.tag + .tag {
+.preview-tags > :not(:first-child) {
     margin-left: 16px;
 }
 

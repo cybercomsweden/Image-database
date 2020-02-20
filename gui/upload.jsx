@@ -90,7 +90,6 @@ export class Upload extends React.Component {
     }
 
     handleDrop(e) {
-        e.persist();
         e.preventDefault();
         const dt = e.dataTransfer;
         const { files } = dt;

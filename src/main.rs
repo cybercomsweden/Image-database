@@ -119,7 +119,7 @@ fn get_differences<'a, T, F: Fn(&T) -> U, U: Ord>(
 
     let mut to_remove = Vec::new();
     for to_remove_key in curr_set.difference(&new_set) {
-        for v in new {
+        for v in curr {
             if to_remove_key == &key(v) {
                 to_remove.push(v);
             }
