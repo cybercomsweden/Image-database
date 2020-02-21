@@ -1,24 +1,17 @@
 import React from "react";
+import FilePreview from "react-preview-file";
+import update from "immutability-helper";
 
 import classes from "./css/upload.css";
+import mediaClass from "./css/media-list.css";
 
 export class Upload extends React.Component {
-    /*
-    static previewFile(file) {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = function load() {
-            const img = document.createElement("img");
-            img.src = reader.result;
-            document.getElementById("gallery").appendChild(img);
-        };
-    }
-    */
     constructor(props) {
         super(props);
         this.state = {
             uploadProgress: [],
             highlight: false,
+            draggedImages: [],
         };
 
         this.dropArea = React.createRef();
@@ -55,9 +48,10 @@ export class Upload extends React.Component {
 
     handleFiles(filesParam) {
         const files = [...filesParam];
+        const { draggedImages } = this.state;
+        this.setState({ draggedImages: update(draggedImages, { $push: files }) });
         this.initializeProgress(files.length);
         files.forEach(this.uploadFile);
-        // files.forEach(this.previewFile);
     }
 
     highlight(e) {
@@ -101,27 +95,43 @@ export class Upload extends React.Component {
     }
 
     render() {
-        const { highlight } = this.state;
+        const { highlight, draggedImages } = this.state;
         const style = {
             color: highlight ? "blue" : "inherit",
         };
         return (
-            <div
-                className={classes.dropArea}
-                id="drop-area"
-                style={style}
-                ref={(ref) => { this.dropArea = ref; }}
-                onDragEnter={this.highlight}
-                onDragOver={this.highlight}
-                onDragLeave={this.unhighlight}
-                onDrop={this.handleDrop}
-            >
-                <p>
-                    Upload one or multiple files by dragging and
-                    dropping images within the dashed box
-                </p>
-                <progress ref={(ref) => { this.progressBar = ref; }} max="100" value="0" />
-            </div>
+        /* This empty <> is the React.Fragment object, esling removed the React.Fragment */
+            <>
+                <div
+                    className={classes.dropArea}
+                    id="drop-area"
+                    style={style}
+                    ref={(ref) => { this.dropArea = ref; }}
+                    onDragEnter={this.highlight}
+                    onDragOver={this.highlight}
+                    onDragLeave={this.unhighlight}
+                    onDrop={this.handleDrop}
+                >
+                    <p>
+                        Upload one or multiple files by dragging and
+                        dropping images within the dashed box
+                    </p>
+                    <progress ref={(ref) => { this.progressBar = ref; }} max="100" value="0" />
+                </div>
+                <div className={mediaClass.list}>
+                    {
+                        draggedImages.map((file) => (
+                            <FilePreview file={file}>
+                                {(preview) => (
+                                    <span className={mediaClass.thumbnail}>
+                                        <img src={preview} alt="No preview available" />
+                                    </span>
+                                )}
+                            </FilePreview>
+                        ))
+                    }
+                </div>
+            </>
         );
     }
 }

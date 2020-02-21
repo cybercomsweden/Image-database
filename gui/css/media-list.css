@@ -9,10 +9,13 @@
   border-radius: 5px;
   overflow: hidden;
   position: relative;
+  max-width: 300px;
+  max-height: 200px;
 }
 
 :local(.thumbnail) > img, video {
     vertical-align: middle;
+    width: 100%;
 }
 
 :local(.play-button) {
