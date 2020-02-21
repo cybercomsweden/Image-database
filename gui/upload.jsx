@@ -5,6 +5,50 @@ import update from "immutability-helper";
 import classes from "./css/upload.css";
 import mediaClass from "./css/media-list.css";
 
+function ImageLogo() {
+    const style = {
+        stroke: "black", fill: "none", strokeWidth: "1.5px", strokeLinecap: "round", strokeLinejoin: "round",
+    };
+    const svgStyle = {
+        height: "40px", width: "40px",
+    };
+    return (
+        <svg viewBox="0 0 40 40" style={svgStyle}>
+            <g transform="scale(1.6666666666666667,1.6666666666666667)">
+                <path style={style} d="M22.477,21.75c0,0.828-0.672,1.5-1.5,1.5H3.023c-0.828,0-1.5-0.672-1.5-1.5V2.25c0-0.828,0.672-1.5,1.5-1.5h15 c0.391,0,0.767,0.153,1.047,0.426l2.955,2.883c0.289,0.282,0.452,0.67,0.452,1.074L22.477,21.75z M8.273,5.25 c1.243,0,2.25,1.007,2.25,2.25s-1.007,2.25-2.25,2.25s-2.25-1.007-2.25-2.25S7.03,5.25,8.273,5.25z M18.813,18.2l-3.925-5.888 c-0.309-0.465-0.937-0.591-1.402-0.282c-0.105,0.07-0.197,0.159-0.269,0.263l-2.691,3.845L8.858,14.8 c-0.436-0.349-1.072-0.279-1.421,0.157c-0.019,0.023-0.036,0.047-0.053,0.072L5.273,18.2" />
+            </g>
+        </svg>
+
+    );
+}
+
+class ImageLoader extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            error: false,
+        };
+
+        this.onImageError = this.onImageError.bind(this);
+    }
+
+    onImageError() {
+        this.setState({ error: true });
+    }
+
+    render() {
+        const { error } = this.state;
+        if (!error) {
+            return (
+                <img {...this.props} onError={this.onImageError} alt=" " />
+            );
+        }
+        return (
+            <ImageLogo />
+        );
+    }
+}
+
 export class Upload extends React.Component {
     constructor(props) {
         super(props);
@@ -121,10 +165,10 @@ export class Upload extends React.Component {
                 <div className={mediaClass.list}>
                     {
                         draggedImages.map((file) => (
-                            <FilePreview file={file}>
+                            <FilePreview file={file} key={file.toString()}>
                                 {(preview) => (
                                     <span className={mediaClass.thumbnail}>
-                                        <img src={preview} alt="No preview available" />
+                                        <ImageLoader src={preview} alt="No preview available" />
                                     </span>
                                 )}
                             </FilePreview>
