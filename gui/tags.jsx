@@ -121,7 +121,7 @@ export class Tags extends React.Component {
             tagNames.push(tag.canonical_name);
         }
         if (!tagNames.includes(addTagValue)) {
-            //TODO: add await and return newly add tag, see save of entities in api.js
+            // TODO: add await and return newly add tag, see save of entities in api.js
             Tag.add(addTagParentValue, addTagValue);
             this.getTags();
         } else {

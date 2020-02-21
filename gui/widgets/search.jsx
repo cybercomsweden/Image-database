@@ -70,7 +70,7 @@ class InnerSearch extends React.Component {
                 // Updating the url with the searched terms
                 history.push("/media?q=".concat(newInput.join("+")));
             } else {
-                newInput[newInput.length - 1] = filteredOptions[activeOption].canonical_name;
+                newInput[newInput.length - 1] = filteredOptions[activeOption].tag.canonical_name;
                 newInput.push("");
             }
             this.setState({

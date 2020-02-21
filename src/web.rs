@@ -225,10 +225,7 @@ async fn api_tags_autocomplete(db: web::Data<DbConn>) -> Result<impl Responder> 
     make_protobuf_response(&api::AutocompleteTags::from_db(&db).await?)
 }
 
-async fn api_tags_add(
-    req: HttpRequest,
-    db: web::Data<DbConn>,
-) -> Result<HttpResponse> {
+async fn api_tags_add(req: HttpRequest, db: web::Data<DbConn>) -> Result<HttpResponse> {
     let name = Tag::canonical_name(req.match_info().query("name"))?;
     let parent_name = Tag::canonical_name(req.match_info().query("parent"))?;
     let mut parent = None;
