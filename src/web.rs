@@ -1,10 +1,9 @@
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
+use actix_protobuf::ProtoBuf;
 use actix_web::{middleware::Logger, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use anyhow::anyhow;
-use bytes::BytesMut;
 use futures::{Stream, StreamExt, TryStreamExt};
-use prost::Message;
 use serde::Deserialize;
 use std::convert::{TryFrom, TryInto};
 use std::path::PathBuf;
@@ -51,21 +50,9 @@ async fn static_file(req: HttpRequest) -> Result<NamedFile> {
 
 async fn api_media_update(
     db: web::Data<DbConn>,
-    mut payload: web::Payload,
+    ProtoBuf(entity_pb): ProtoBuf<api::Entity>,
 ) -> Result<impl Responder> {
     // TODO: Use transaction
-    let mut body = BytesMut::new();
-    while let Some(chunk) = payload
-        .next()
-        .await
-        .transpose()
-        .map_err(|e| anyhow!("{}", e))?
-    {
-        // TODO: Protect from very large payloads
-        body.extend_from_slice(&chunk);
-    }
-
-    let entity_pb = api::Entity::decode(body)?;
     let client_ids: Vec<i32> = entity_pb
         .tags
         .unwrap_or(api::Tags::default())
