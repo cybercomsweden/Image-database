@@ -225,6 +225,21 @@ async fn api_tags_autocomplete(db: web::Data<DbConn>) -> Result<impl Responder> 
     make_protobuf_response(&api::AutocompleteTags::from_db(&db).await?)
 }
 
+async fn api_tags_add(
+    req: HttpRequest,
+    db: web::Data<DbConn>,
+) -> Result<HttpResponse> {
+    let name = Tag::canonical_name(req.match_info().query("name"))?;
+    let parent_name = Tag::canonical_name(req.match_info().query("parent"))?;
+    let mut parent = None;
+    if parent_name != "none" {
+        parent = Some(parent_name.to_string());
+    }
+    println!("{:#?}", Tag::insert(&db, name.as_str(), parent,).await?);
+
+    Ok(HttpResponse::Ok().into())
+}
+
 pub async fn run_server(config: Config) -> Result<()> {
     Ok(HttpServer::new(move || {
         // We need this here to ensure ownership for the data_factory callback to move this into
@@ -253,6 +268,7 @@ pub async fn run_server(config: Config) -> Result<()> {
                 web::get().to(api_tags_autocomplete),
             )
             .route("/api/tags/{name}", web::get().to(api_tag_get_by_name))
+            .route("/api/tags/{parent}/{name}", web::post().to(api_tags_add))
     })
     .bind("127.0.0.1:5000")?
     .run()

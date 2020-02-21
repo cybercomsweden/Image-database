@@ -53,6 +53,10 @@ Tags.fetch = async function fetchTags() {
     return fetchPb(Tags, "/api/tags");
 };
 
+Tag.add = async function addTag(parent, tag) {
+    return fetchPb(Tag, `/api/tags/${parent}/${tag}`, { method: "POST" });
+};
+
 Tag.fetch = async function fetchTag(name) {
     return fetchPb(Tag, `/api/tags/${name}`);
 };
