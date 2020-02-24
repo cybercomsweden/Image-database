@@ -28,6 +28,23 @@ async function putPb(cls, resource, obj) {
     return cls.read(new Pbf(buf));
 }
 
+async function postPb(cls, resource, obj) {
+    const pbf = new Pbf();
+    cls.write(obj, pbf);
+
+    const rsp = await fetch(resource, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/protobuf",
+        },
+        body: pbf.finish(),
+    });
+
+    const blob = await rsp.blob();
+    const buf = await blob.arrayBuffer();
+    return cls.read(new Pbf(buf));
+}
+
 
 AutocompleteTags.fetch = async function fetchAutocompleteTags() {
     return fetchPb(AutocompleteTags, "/api/tags/autocomplete");
@@ -53,8 +70,9 @@ Tags.fetch = async function fetchTags() {
     return fetchPb(Tags, "/api/tags");
 };
 
-Tag.add = async function addTag(parent, tag) {
-    return fetchPb(Tag, `/api/tags/${parent}/${tag}`, { method: "POST" });
+Tag.add = async function saveTag(pid, name) {
+    const tag = { pid, name };
+    return postPb(Tag, "/api/tags", tag);
 };
 
 Tag.fetch = async function fetchTag(name) {

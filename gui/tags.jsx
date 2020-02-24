@@ -1,3 +1,4 @@
+import update from "immutability-helper";
 import React from "react";
 import { Link } from "react-router-dom";
 import { Tag, Tags as ApiTags } from "./api.js";
@@ -48,7 +49,7 @@ export class Tags extends React.Component {
         this.state = {
             tags: null,
             addTagValue: "",
-            addTagParentValue: "",
+            addTagParentValue: "0",
             addClicked: false,
         };
 
@@ -93,11 +94,11 @@ export class Tags extends React.Component {
         if (!tags.length) {
             return null;
         }
-        tagNames.push(<option key="None" value="None">None</option>);
+        tagNames.push(<option key="0" value="0">None</option>);
         for (const tag of tags) {
             tagNames.push(
-                <option key={tag.canonical_name} value={tag.canonical_name}>
-                    {tag.canonical_name}
+                <option key={tag.id} value={tag.id}>
+                    {tag.name}
                 </option>,
             );
         }
@@ -114,21 +115,22 @@ export class Tags extends React.Component {
         }
     }
 
-    handleAddSubmit(event) {
+    async handleAddSubmit(event) {
+        event.preventDefault();
         const { tags: { tag: tags }, addTagValue, addTagParentValue } = this.state;
         const tagNames = [];
         for (const tag of tags) {
             tagNames.push(tag.canonical_name);
         }
         if (!tagNames.includes(addTagValue)) {
-            // TODO: add await and return newly add tag, see save of entities in api.js
-            Tag.add(addTagParentValue, addTagValue);
-            this.getTags();
+            const tag = await Tag.add(addTagParentValue, addTagValue);
+            const { tags: stateTags } = this.state;
+            const newTags = update(stateTags, { tag: { $push: [tag] } });
+            this.setState({ tags: newTags });
         } else {
             // eslint-disable-next-line no-alert
             alert("Could not add tag since it already exists!");
         }
-        event.preventDefault();
     }
 
     handleAddClick() {
