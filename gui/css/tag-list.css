@@ -69,51 +69,6 @@
     background: #1c61aa;
 }
 
-/* Reset Select */
-:local(.select) {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    -ms-appearance: none;
-    appearance: none;
-    outline: 0;
-    box-shadow: none;
-    border: 0 !important;
-    background-image: none;
-    background: #3597ff;
-    flex: 1;
-    padding: 0 .5em;
-    color: white;
-    cursor: pointer;
-}
-
-:local(.select-wrapper) {
-    position: relative;
-    display: flex;
-    width: 16em;
-    height: 2em;
-    line-height: 2;
-    background: #2c3e50;
-    overflow: hidden;
-    border-radius: .25em;
-}
-
-/* Arrow */
-:local(.select-wrapper)::after {
-    content: '\25BC';
-    color: #aaa;
-    position: absolute;
-    top: 0;
-    right: 0;
-    padding: 0 1em;
-    background: #248af7;
-    cursor: pointer;
-    pointer-events: none;
-    transition: .25s all ease;
-}
-:local(.select-wrapper):hover::after {
-    color: white;
-}
-
 :local(.tagName) {
     padding: 4px;
     margin-left: 16px;

@@ -2,8 +2,10 @@ import update from "immutability-helper";
 import React from "react";
 import { Link } from "react-router-dom";
 import { Tag, Tags as ApiTags } from "./api.js";
+import { SimpleSearch } from "./widgets/search.jsx";
 
 import classes from "./css/tag-list.css";
+import viewClasses from "./css/media-view.css";
 
 function cmp(a, b) {
     if (a < b) {
@@ -49,12 +51,13 @@ export class Tags extends React.Component {
         this.state = {
             tags: null,
             addTagValue: "",
-            addTagParentValue: "0",
+            addTagParentValue: { id: 0, name: "Add tag parent (optional)" },
             addClicked: false,
         };
 
         this.handleAddChange = this.handleAddChange.bind(this);
         this.handleAddSubmit = this.handleAddSubmit.bind(this);
+        this.handleAddParent = this.handleAddParent.bind(this);
         this.handleAddClick = this.handleAddClick.bind(this);
     }
 
@@ -88,30 +91,10 @@ export class Tags extends React.Component {
         return <ul className={classes.tree}>{childNodes}</ul>;
     }
 
-    getAllTagNames() {
-        const { tags: { tag: tags } } = this.state;
-        const tagNames = [];
-        if (!tags.length) {
-            return null;
-        }
-        tagNames.push(<option key="0" value="0">None</option>);
-        for (const tag of tags) {
-            tagNames.push(
-                <option key={tag.id} value={tag.id}>
-                    {tag.name}
-                </option>,
-            );
-        }
-
-        return tagNames;
-    }
-
     handleAddChange(event) {
         const { target } = event;
         if (target.name === "tagName") {
             this.setState({ addTagValue: target.value });
-        } else if (target.name === "tagParent") {
-            this.setState({ addTagParentValue: target.value });
         }
     }
 
@@ -120,21 +103,27 @@ export class Tags extends React.Component {
         const { tags: { tag: tags }, addTagValue, addTagParentValue } = this.state;
         const tagNames = [];
         for (const tag of tags) {
+            tagNames.push(tag.name);
             tagNames.push(tag.canonical_name);
         }
         if (!tagNames.includes(addTagValue)) {
-            const tag = await Tag.add(addTagParentValue, addTagValue);
+            const tag = await Tag.add(addTagParentValue.id, addTagValue);
             const { tags: stateTags } = this.state;
             const newTags = update(stateTags, { tag: { $push: [tag] } });
-            this.setState({ tags: newTags });
+            this.setState({ tags: newTags, addTagParentValue: { id: 0, name: "Add parent tag (optional)" }, addTagValue: "" });
         } else {
             // eslint-disable-next-line no-alert
             alert("Could not add tag since it already exists!");
         }
     }
 
+    handleAddParent(tag) {
+        this.setState({ addTagParentValue: tag });
+    }
+
     handleAddClick() {
-        this.setState({ addClicked: true });
+        const { addClicked: clicked } = this.state;
+        this.setState({ addClicked: !clicked });
     }
 
     render() {
@@ -142,7 +131,6 @@ export class Tags extends React.Component {
             tags: tagsPb, addClicked, addTagParentValue, addTagValue,
         } = this.state;
         let tagsResult;
-        let allTags;
         if (tagsPb === null) {
             tagsResult = "Loading";
         }
@@ -151,17 +139,18 @@ export class Tags extends React.Component {
         }
         if (tagsPb !== null && tagsPb.tag.length) {
             tagsResult = this.getSubTree(0);
-            allTags = this.getAllTagNames();
         }
 
         let addForm = null;
         if (addClicked) {
             addForm = (
                 <form onSubmit={this.handleAddSubmit}>
-                    <div className={classes.selectWrapper}>
-                        <select className={classes.select} name="tagParent" value={addTagParentValue} onChange={this.handleAddChange}>
-                            {allTags}
-                        </select>
+                    <div className={viewClasses.tagSearch} key="!search-input">
+                        <SimpleSearch
+                            className={classes.tagName}
+                            placeholder={addTagParentValue.name}
+                            onSelect={this.handleAddParent}
+                        />
                     </div>
                     <input className={classes.tagName} type="text" name="tagName" value={addTagValue} onChange={this.handleAddChange} placeholder="Add tag" />
                     <input className={classes.addButton} type="submit" value="Submit" />
