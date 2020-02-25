@@ -109,7 +109,9 @@ async fn main() -> Result<()> {
             populate_database(&get_db(config).await?, &paths).await?;
         }
         Cmd::InitDb => {
-            create_schema(&get_db(config).await?).await?;
+            create_schema(&get_db(config.clone()).await?).await?;
+            Tag::insert(&get_db(config.clone()).await?, "Places", None).await?;
+            Tag::insert(&get_db(config.clone()).await?, "People", None).await?;
         }
         Cmd::Metadata { path } => match Metadata::from_file(&path) {
             Ok(metadata) => println!("{:#?}", metadata),
