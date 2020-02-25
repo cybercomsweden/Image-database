@@ -93,9 +93,23 @@ export class Upload extends React.Component {
     handleFiles(filesParam) {
         const files = [...filesParam];
         const { draggedImages } = this.state;
-        this.setState({ draggedImages: update(draggedImages, { $push: files }) });
+        const newImages = [];
+        const alreadyExists = [];
+        for (const f of files) {
+            if (draggedImages.find((e) => e.name === f.name) === undefined) {
+                newImages.push(f);
+            } else {
+                alreadyExists.push(f.name);
+            }
+        }
+        if (alreadyExists.length > 0) {
+            // TODO: change the alert to notification
+            // eslint-disable-next-line no-alert
+            alert(`These files already exists\n ${alreadyExists.join("\n")}`);
+        }
+        this.setState({ draggedImages: update(draggedImages, { $push: newImages }) });
         this.initializeProgress(files.length);
-        files.forEach(this.uploadFile);
+        newImages.forEach(this.uploadFile);
     }
 
     highlight(e) {
