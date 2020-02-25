@@ -143,6 +143,7 @@ export class Upload extends React.Component {
         const style = {
             color: highlight ? "blue" : "inherit",
         };
+        let keyId = 0;
         return (
         /* This empty <> is the React.Fragment object, esling removed the React.Fragment */
             <>
@@ -164,15 +165,18 @@ export class Upload extends React.Component {
                 </div>
                 <div className={mediaClass.list}>
                     {
-                        draggedImages.map((file) => (
-                            <FilePreview file={file} key={file.toString()}>
-                                {(preview) => (
-                                    <span className={mediaClass.thumbnail}>
-                                        <ImageLoader src={preview} alt="No preview available" />
-                                    </span>
-                                )}
-                            </FilePreview>
-                        ))
+                        draggedImages.map((file) => {
+                            keyId += 1;
+                            return (
+                                <FilePreview file={file} key={keyId}>
+                                    {(preview) => (
+                                        <span className={mediaClass.thumbnail}>
+                                            <ImageLoader src={preview} alt="No preview available" />
+                                        </span>
+                                    )}
+                                </FilePreview>
+                            );
+                        })
                     }
                 </div>
             </>
