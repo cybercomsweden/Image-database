@@ -330,8 +330,12 @@ class Pic extends React.Component {
                     <p>This cannot be undone, are you sure you want to delete media?</p>
                     <button
                         type="button"
-                        onClick={() => {
-                            this.setState({ deleted: true });
+                        onClick={async () => {
+                            const { entity } = this.state;
+                            const newEntity = update(entity, {
+                                tags: { $set: null },
+                            });
+                            this.setState({ entity: await Entity.save(newEntity), deleted: true });
                             this.handleDeleteConfirm();
                             onClose();
                         }}
