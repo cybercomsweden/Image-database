@@ -245,6 +245,22 @@ impl Entity {
             .await?
             .map(|row| Ok(Self::from_row(&row?)?)))
     }
+
+    pub async fn delete<T: Borrow<i32>>(client: &Client, id: T) -> Result<()> {
+        let num_rows = &client
+            .execute(
+                "
+            DELETE FROM entity
+            WHERE id = $1
+            ",
+                &[id.borrow()],
+            )
+            .await?;
+        if num_rows != &1 {
+            return Err(anyhow!("No such image for the given id").into());
+        }
+        Ok(())
+    }
 }
 
 impl Tag {

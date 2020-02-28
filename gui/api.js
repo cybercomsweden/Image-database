@@ -66,6 +66,10 @@ Entity.save = async function saveEntity(entity) {
     return putPb(Entity, `/api/media/${entity.id}`, entity);
 };
 
+Entity.delete = async function deleteEntity(entity) {
+    return putPb(Entity, `/api/media/delete/${entity.id}`, entity);
+};
+
 Tags.fetch = async function fetchTags() {
     return fetchPb(Tags, "/api/tags");
 };

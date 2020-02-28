@@ -90,6 +90,13 @@ async fn populate_database(client: &Client, src_dirs: &Vec<PathBuf>) -> Result<(
     Ok(())
 }
 
+async fn delete_image(client: &Client, id: String) -> Result<()> {
+    let new_id: i32 = id.parse()?;
+    Entity::delete(&client, new_id).await?;
+    println!("Deleted image with id: {:?}", new_id);
+    Ok(())
+}
+
 #[actix_rt::main]
 async fn main() -> Result<()> {
     let args = Args::from_args();
@@ -140,6 +147,9 @@ async fn main() -> Result<()> {
         }
         Cmd::Tag(SubCmdTag::RemoveParent { tag }) => {
             remove_parent(&get_db(config).await?, tag).await?;
+        }
+        Cmd::Delete { id } => {
+            delete_image(&get_db(config).await?, id).await?;
         }
     }
     Ok(())

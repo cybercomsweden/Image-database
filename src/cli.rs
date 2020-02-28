@@ -30,6 +30,13 @@ pub enum Cmd {
 
     /// View and manage tags
     Tag(SubCmdTag),
+
+    /// Delete
+    Delete {
+        /// Id of media to delete
+        #[structopt(short = "i", long = "id")]
+        id: String,
+    },
 }
 
 #[derive(Debug, StructOpt)]

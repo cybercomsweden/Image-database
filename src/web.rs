@@ -232,6 +232,16 @@ async fn api_tags_add(
     make_protobuf_response(&new_tag_pb)
 }
 
+async fn api_media_delete(
+    db: web::Data<DbConn>,
+    ProtoBuf(entity_pb): ProtoBuf<api::Entity>,
+) -> Result<impl Responder> {
+    let id = entity_pb.id;
+    Entity::delete(&db, id).await?;
+    println!("Deleted image with id: {:?}", id);
+    Ok(HttpResponse::Ok())
+}
+
 pub async fn run_server(config: Config) -> Result<()> {
     Ok(HttpServer::new(move || {
         // We need this here to ensure ownership for the data_factory callback to move this into
@@ -260,6 +270,7 @@ pub async fn run_server(config: Config) -> Result<()> {
                 web::get().to(api_tags_autocomplete),
             )
             .route("/api/tags/{name}", web::get().to(api_tag_get_by_name))
+            .route("/api/media/delete/{id}", web::put().to(api_media_delete))
             .route("/api/tags", web::post().to(api_tags_add))
     })
     .bind("127.0.0.1:5000")?

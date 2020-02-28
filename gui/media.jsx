@@ -1,7 +1,9 @@
 import update from "immutability-helper";
 import React from "react";
+import { confirmAlert } from "react-confirm-alert";
+import "react-confirm-alert/src/react-confirm-alert.css";
 import {
-    Link, Route, Switch, withRouter,
+    Link, Redirect, Route, Switch, withRouter,
 } from "react-router-dom";
 import queryString from "query-string";
 import { Entity, Entities } from "./api.js";
@@ -45,6 +47,14 @@ function EditIcon(props) {
                 <path d="M425.1,420.8C534.2,312.4,645,202.2,756.3,91.7c49.8,50.7,99.4,101.3,149.6,152.5c-109,108.3-219.9,218.5-331.1,329C525,522.4,475.3,471.9,425.1,420.8z" />
                 <path d="M401.8,443.7c50.4,51.2,99.6,101.4,149.1,151.7c-68.8,19.5-138.8,39.4-209.8,59.6C361.3,584.5,381.3,514.9,401.8,443.7z" />
             </g>
+        </svg>
+    );
+}
+
+function DeleteIcon(props) {
+    return (
+        <svg version="1.1" width="20" height="20" viewBox="0 0 24 24" {...props}>
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
         </svg>
     );
 }
@@ -260,12 +270,15 @@ class Pic extends React.Component {
             entity: null,
             playClicked: false,
             edit: false,
+            deleted: false,
         };
 
         this.tags = React.createRef();
 
         this.handlePlayClick = this.handlePlayClick.bind(this);
         this.handleEditClick = this.handleEditClick.bind(this);
+        this.handleDeleteClick = this.handleDeleteClick.bind(this);
+        this.handleDeleteConfirm = this.handleDeleteConfirm.bind(this);
         this.handleTagAdd = this.handleTagAdd.bind(this);
         this.handleTagRemove = this.handleTagRemove.bind(this);
     }
@@ -302,6 +315,33 @@ class Pic extends React.Component {
                 behavior: "smooth",
             });
         }
+    }
+
+    async handleDeleteConfirm() {
+        const { entity } = this.state;
+        await Entity.delete(entity);
+    }
+
+    handleDeleteClick() {
+        confirmAlert({
+            customUI: ({ onClose }) => (
+                <div className="custom-ui">
+                    <h1>Delete media</h1>
+                    <p>This cannot be undone, are you sure you want to delete media?</p>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            this.setState({ deleted: true });
+                            this.handleDeleteConfirm();
+                            onClose();
+                        }}
+                    >
+                        Confirm
+                    </button>
+                    <button type="button" onClick={onClose}>Cancel</button>
+                </div>
+            ),
+        });
     }
 
     async handleTagAdd(tag) {
@@ -406,10 +446,19 @@ class Pic extends React.Component {
             videoPlayer = <VideoPlayer entity={simpleEntity} />;
         }
 
+        let deleteRedirect = null;
+        const { deleted } = this.state;
+        if (deleted) {
+            // TODO: make sure to update thumbnail page to not show deleted media
+            deleteRedirect = <Redirect to="/" />;
+        }
+
         return (
             <div className={viewClasses.container}>
+                {deleteRedirect}
                 <div className={viewClasses.previewContainer}>
                     <div className={viewClasses.navBar}>
+                        <DeleteIcon onClick={this.handleDeleteClick} />
                         <EditIcon width="20" height="20" onClick={this.handleEditClick} />
                         <PreserveQueryParamsLink className={viewClasses.button} to="/">
                             <svg width="20px" height="20px">
