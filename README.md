@@ -66,7 +66,7 @@ Current file format that we know are supported are the following:
 * Mp4
 * Mov
 * Jpeg
-* Ong
+* Png
 * Cr2
 * Nef
 * Dng
