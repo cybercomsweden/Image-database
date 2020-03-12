@@ -55,9 +55,12 @@ cargo run
 At localhost:5000 there are currently 4 different tabs, 'Media', 'Tags', 'Map', 'Upload' and a search bar.
 
 Under tab 'Media' you will see thumbnails of all the images/video that you currently have uploaded to the database.
+
 'Tags' tab is used for an overview of all the tags that currently exists in the database and to add new tags.
+
 'Map' tab gives you an overview of where in the world that you have images.
-'Upload' tab is used for drag and drop images to upload to the database.
+
+'Upload' tab is used for drag and drop files to upload to the database.
 
 Current file format that we know are supported are the following:
 * Mp4
